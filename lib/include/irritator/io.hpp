@@ -485,7 +485,14 @@ private:
     streambuf buf;
     std::istream is;
 
+    struct source_mapping
+    {
+        u32 index = 0u;
+        source_id value = undefined<source_id>();
+    };
+
     std::vector<model_id> map;
+    std::vector<source_mapping> sources_mapping;
     int model_number = 0;
 
     char temp_1[32];
@@ -539,6 +546,43 @@ private:
     {
         line_error = buf.m_line_number;
         column_error = buf.m_column;
+    }
+
+    status do_read_data_source(simulation& sim) noexcept
+    {
+        update_error_report();
+        int source_mapping_number = 0;
+
+        irt_return_if_fail((is >> source_mapping_number),
+                           status::io_file_format_error);
+
+        irt_return_if_fail(source_mapping_number > 0,
+                           status::io_file_format_model_number_error);
+
+        irt_return_if_fail(
+          sim.sources.can_alloc(to_unsigned(source_mapping_number)),
+          status::io_file_format_model_number_error);
+
+        try {
+            sources_mapping.resize(source_mapping_number);
+        } catch (const std::bad_alloc& /*e*/) {
+            return status::io_not_enough_memory;
+        }
+
+        for (int i = 0; i < source_mapping_number; ++i) {
+            update_error_report();
+
+            auto& src = sim.sources.alloc();
+            irt_return_if_bad(src.init(sim, src, is));
+        }
+
+        std::sort(sources_mapping.begin(),
+                  sources_mapping.end(),
+                  [](const auto left, const auto right) {
+                      return left.index < right.index;
+                  });
+
+        return status::success;
     }
 
     status do_read_model_number() noexcept
@@ -995,7 +1039,33 @@ private:
 
     bool read(generator& dyn) noexcept
     {
-        return !!(is >> dyn.default_offset);
+        u32 source_ta, source_value;
+
+        if (!(is >> dyn.default_offset >> source_ta >> source_value))
+            return false;
+
+        auto src_ta = binary_find(
+          sources_mapping.begin(),
+          sources_mapping.end(),
+          source_ta,
+          [](const u32 search, const auto& m) { return m.index == search; });
+
+        if (src_ta == sources_mapping.end())
+            return false;
+
+        auto src_value = binary_find(
+          sources_mapping.begin(),
+          sources_mapping.end(),
+          source_value,
+          [](const u32 search, const auto& m) { return m.index == search; });
+
+        if (src_value == sources_mapping.end())
+            return false;
+
+        dyn.source_ta = src_ta->value;
+        dyn.source_value = src_value->value;
+
+        return true;
     }
 
     bool read(constant& dyn) noexcept
@@ -1376,7 +1446,9 @@ private:
 
     void write(const generator& dyn) noexcept
     {
-        os << "generator " << ' ' << dyn.default_offset << '\n';
+        os << "generator " << ' ' << dyn.default_offset << dyn.default_ta << ' '
+           << dyn.default_value << ' ' << get_index(dyn.default_ta_source)
+           << ' ' << get_index(dyn.default_value_source) << ' ' << '\n';
     }
 
     void write(const constant& dyn) noexcept

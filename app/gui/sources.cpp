@@ -48,26 +48,6 @@ sources::new_text_file() noexcept
     }
 }
 
-enum class distribution
-{
-    uniform_int,
-    uniform_real,
-    bernouilli,
-    binomial,
-    negative_binomial,
-    geometric,
-    poisson,
-    exponential,
-    gamma,
-    weibull,
-    exterme_value,
-    normal,
-    lognormal,
-    chi_squared,
-    cauchy,
-    fisher_f,
-    student_t
-};
 
 static constexpr const char* items[] = {
     "uniform-int", "uniform-real",      "bernouilli",
