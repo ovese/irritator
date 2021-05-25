@@ -15,6 +15,14 @@
 
 namespace irt {
 
+template<size_t N, typename... Args>
+void
+format(small_string<N>& str, const char* fmt, const Args&... args)
+{
+    auto ret = fmt::format_to_n(str.begin(), N - 1, fmt, args...);
+    str.size(ret.size);
+}
+
 // static void
 // show_random(irt::random_source& src)
 // {
@@ -242,6 +250,7 @@ application::show_sources(bool* is_show)
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
 
     static bool show_file_dialog = false;
+    static irt::constant_source* constant_ptr = nullptr;
     static irt::binary_file_source* binary_file_ptr = nullptr;
     static irt::text_file_source* text_file_ptr = nullptr;
 
@@ -264,32 +273,35 @@ application::show_sources(bool* is_show)
                                     ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
             small_string<16> label;
-            static ImVector<int> selection;
+            static ImVector<u64> selection;
 
-            for (auto& elem : srcs.constant_sources) {
-                const bool item_is_selected = selection.contains(elem.first);
+            constant_source* src = nullptr;
+            while (srcs.constant_sources.next(src)) {
+                const auto id = srcs.constant_sources.get_id(src);
+                const auto index = get_index(id);
+                const bool item_is_selected = selection.contains(ordinal(id));
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
 
-                fmt::format_to_n(
-                  label.begin(), label.capacity(), "{}", elem.first);
+                format(label, "{}", index);
+
                 if (ImGui::Selectable(label.c_str(),
                                       item_is_selected,
                                       ImGuiSelectableFlags_AllowItemOverlap |
                                         ImGuiSelectableFlags_SpanAllColumns)) {
                     if (ImGui::GetIO().KeyCtrl) {
                         if (item_is_selected)
-                            selection.find_erase_unsorted(elem.first);
+                            selection.find_erase_unsorted(ordinal(id));
                         else
-                            selection.push_back(elem.first);
+                            selection.push_back(ordinal(id));
                     } else {
                         selection.clear();
-                        selection.push_back(elem.first);
+                        selection.push_back(ordinal(id));
                     }
                 }
                 ImGui::TableNextColumn();
-                ImGui::PushID(elem.first);
+                ImGui::PushID(ordinal(id));
                 ImGui::InputDouble("##cell", &elem.second.value);
                 ImGui::PopID();
             }
@@ -317,14 +329,17 @@ application::show_sources(bool* is_show)
             small_string<16> label;
             static ImVector<int> selection;
 
-            for (auto& elem : bins) {
-                const bool item_is_selected = selection.contains(elem.first);
+            binary_file_source* src = nullptr;
+            while (srcs.binary_file_sources.next(src)) {
+                const auto id = srcs.binary_file_sources.get_id(src);
+                const auto index = get_index(id);
+                const bool item_is_selected = selection.contains(ordinal(id));
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
 
-                fmt::format_to_n(
-                  label.begin(), label.capacity(), "{}", elem.first);
+                format(label, "{}", index);
+
                 if (ImGui::Selectable(label.c_str(),
                                       item_is_selected,
                                       ImGuiSelectableFlags_AllowItemOverlap |

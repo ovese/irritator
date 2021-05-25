@@ -2376,7 +2376,7 @@ editor::show_editor() noexcept
                           (const char*)path.u8string().c_str());
                 if (auto os = std::ofstream(path); os.is_open()) {
                     writer w(os);
-                    auto ret = w(sim);
+                    auto ret = w(sim, app.srcs);
                     if (is_success(ret))
                         log_w.log(5, "success\n");
                     else
@@ -2592,7 +2592,7 @@ editor::show_editor() noexcept
                           (const char*)path.u8string().c_str());
                 if (auto os = std::ofstream(path); os.is_open()) {
                     writer w(os);
-                    auto ret = w(sim);
+                    auto ret = w(sim, app.srcs);
                     if (is_success(ret))
                         log_w.log(5, "success\n");
                     else

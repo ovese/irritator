@@ -933,6 +933,7 @@ main()
 
         {
             irt::simulation sim;
+            irt::external_source srcs;
             expect(irt::is_success(sim.init(64lu, 4096lu)));
 
             sim.alloc<irt::none>();
@@ -988,7 +989,7 @@ main()
             std::ostringstream os;
             irt::writer w(os);
 
-            expect(irt::is_success(w(sim)));
+            expect(irt::is_success(w(sim, srcs)));
             str = os.str();
         }
 
@@ -999,10 +1000,11 @@ main()
             std::istringstream is(str);
 
             irt::simulation sim;
+            irt::external_source srcs;
             expect(irt::is_success(sim.init(64lu, 32lu)));
 
             irt::reader r(is);
-            expect(irt::is_success(r(sim)));
+            expect(irt::is_success(r(sim, srcs)));
 
             expect(sim.models.size() == 49);
         }
@@ -1031,7 +1033,7 @@ main()
             irt::is_fatal_breakpoint = false;
 
             irt::reader r(is);
-            expect(irt::is_bad(r(sim)));
+            expect(irt::is_bad(r(sim, srcs)));
             expect(r.line_error == 2);
             expect(r.column_error == 17);
             expect(r.model_error == 0);
