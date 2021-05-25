@@ -15,544 +15,242 @@
 
 namespace irt {
 
-irt::source::constant*
-sources::new_constant() noexcept
-{
-    try {
-        auto& elem = csts[csts_next_id++];
-        return &elem;
-    } catch (const std::exception& /*e/*/) {
-        return nullptr;
-    }
-}
+// static void
+// show_random(irt::random_source& src)
+// {
+//     static int current_item = -1;
+//     static u64 size = 1024 * 1024;
+//     static bool show_file_dialog = false;
 
-irt::source::binary_file*
-sources::new_binary_file() noexcept
-{
-    try {
-        auto& elem = bins[bins_next_id++];
-        return &elem;
-    } catch (const std::exception& /*e/*/) {
-        return nullptr;
-    }
-}
+//     if (ImGui::CollapsingHeader("Random source")) {
+//         ImGui::InputScalar("length", ImGuiDataType_U64, &size);
 
-irt::source::text_file*
-sources::new_text_file() noexcept
-{
-    try {
-        auto& elem = texts[texts_next_id++];
-        return &elem;
-    } catch (const std::exception& /*e/*/) {
-        return nullptr;
-    }
-}
+//         int old_current = current_item;
+//         ImGui::Combo("Distribution",
+//                      &current_item,
+//                      irt::distribution_type_str,
+//                      IM_ARRAYSIZE(irt::distribution_type_str));
 
+//         const auto type = enum_cast<irt::distribution_type>(current_item);
 
-static constexpr const char* items[] = {
-    "uniform-int", "uniform-real",      "bernouilli",
-    "binomial",    "negative-binomial", "geometric",
-    "poisson",     "exponential",       "gamma",
-    "weibull",     "exterme-value",     "normal",
-    "lognormal",   "chi-squared",       "cauchy",
-    "fisher-f",    "student-t"
-};
+//         switch (type) {
+//         case distribution_type::uniform_int:
+//             if (old_current != current_item) {
+//                 src.a32 = 0;
+//                 src.b32 = 100;
+//             }
+//             ImGui::InputInt("a", &src.a32);
+//             ImGui::InputInt("b", &src.b32);
+//             break;
 
-template<typename RandomGenerator, typename Distribution>
-static void
-generate(std::ostream& os,
-         RandomGenerator& gen,
-         Distribution dist,
-         const std::size_t size,
-         const source::random_file_type type,
-         double& status) noexcept
-{
-    try {
-        status = 0.0;
+//         case distribution_type::uniform_real:
+//             if (old_current != current_item) {
+//                 src.a = 0.0;
+//                 src.b = 1.0;
+//             }
+//             ImGui::InputDouble("a", &src.a);
+//             ImGui::InputDouble("b", &src.b);
+//             break;
 
-        switch (type) {
-        case source::random_file_type::text: {
-            if (!os) {
-                status = -1.0;
-                return;
-            }
+//         case distribution_type::bernouilli:
+//             if (old_current != current_item) {
+//                 src.p = 0.5;
+//             }
+//             ImGui::InputDouble("p", &src.p);
+//             break;
 
-            for (std::size_t sz = 0; sz < size; ++sz) {
-                status =
-                  static_cast<double>(sz) * 100.0 / static_cast<double>(size);
-                if (!(os << dist(gen) << '\n')) {
-                    status = -2.0;
-                    return;
-                }
-            }
-        } break;
+//         case distribution_type::binomial:
+//             if (old_current != current_item) {
+//                 src.p = 0.5;
+//                 src.t32 = 1;
+//             }
+//             ImGui::InputDouble("p", &src.p);
+//             ImGui::InputInt("t", &src.t32);
+//             break;
 
-        case source::random_file_type::binary: {
-            if (!os) {
-                status = -1.0;
-                return;
-            }
+//         case distribution_type::negative_binomial:
+//             if (old_current != current_item) {
+//                 src.p = 0.5;
+//                 src.t32 = 1;
+//             }
+//             ImGui::InputDouble("p", &src.p);
+//             ImGui::InputInt("t", &src.k32);
+//             break;
 
-            for (std::size_t sz = 0; sz < size; ++sz) {
-                status =
-                  static_cast<double>(sz) * 100.0 / static_cast<double>(size);
-                const double value = dist(gen);
-                os.write(reinterpret_cast<const char*>(&value), sizeof(value));
-            }
-        } break;
-        }
-        status = 100.0;
+//         case distribution_type::geometric:
+//             if (old_current != current_item) {
+//                 src.p = 0.5;
+//             }
+//             ImGui::InputDouble("p", &src.p);
+//             break;
 
-    } catch (std::exception& /*e*/) {
-        status = -3.0;
-    }
-}
+//         case distribution_type::poisson:
+//             if (old_current != current_item) {
+//                 src.mean = 0.5;
+//             }
+//             ImGui::InputDouble("mean", &src.mean);
+//             break;
 
-struct distribution_manager
-{
-    std::thread job;
-    std::ofstream os;
-    double a, b, p, mean, lambda, alpha, beta, stddev, m, s, n;
-    int a32, b32, t32, k32;
-    distribution type = distribution::uniform_int;
-    bool is_running;
-    double status;
+//         case distribution_type::exponential:
+//             if (old_current != current_item) {
+//                 src.lambda = 1.0;
+//             }
+//             ImGui::InputDouble("lambda", &src.lambda);
+//             break;
 
-    void start(std::mt19937_64& gen,
-               sz size,
-               irt::source::random_file_type file_type)
-    {
-        is_running = true;
+//         case distribution_type::gamma:
+//             if (old_current != current_item) {
+//                 src.alpha = 1.0;
+//                 src.beta = 1.0;
+//             }
+//             ImGui::InputDouble("alpha", &src.alpha);
+//             ImGui::InputDouble("beta", &src.beta);
+//             break;
 
-        switch (type) {
-        case distribution::uniform_int:
-            job = std::thread(
-              generate<std::mt19937_64, std::uniform_int_distribution<int>>,
-              std::ref(os),
-              std::ref(gen),
-              std::uniform_int_distribution(a32, b32),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::weibull:
+//             if (old_current != current_item) {
+//                 src.a = 1.0;
+//                 src.b = 1.0;
+//             }
+//             ImGui::InputDouble("a", &src.a);
+//             ImGui::InputDouble("b", &src.b);
+//             break;
 
-        case distribution::uniform_real:
-            job = std::thread(
-              generate<std::mt19937_64, std::uniform_real_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::uniform_real_distribution(a, b),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::exterme_value:
+//             if (old_current != current_item) {
+//                 src.a = 1.0;
+//                 src.b = 0.0;
+//             }
+//             ImGui::InputDouble("a", &src.a);
+//             ImGui::InputDouble("b", &src.b);
+//             break;
 
-        case distribution::bernouilli:
-            job = std::thread(
-              generate<std::mt19937_64, std::bernoulli_distribution>,
-              std::ref(os),
-              std::ref(gen),
-              std::bernoulli_distribution(p),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::normal:
+//             if (old_current != current_item) {
+//                 src.mean = 0.0;
+//                 src.stddev = 1.0;
+//             }
+//             ImGui::InputDouble("mean", &src.mean);
+//             ImGui::InputDouble("stddev", &src.stddev);
+//             break;
 
-        case distribution::binomial:
-            job = std::thread(
-              generate<std::mt19937_64, std::binomial_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::binomial_distribution(t32, p),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::lognormal:
+//             if (old_current != current_item) {
+//                 src.m = 0.0;
+//                 src.s = 1.0;
+//             }
+//             ImGui::InputDouble("m", &src.m);
+//             ImGui::InputDouble("s", &src.s);
+//             break;
 
-        case distribution::negative_binomial:
-            job = std::thread(
-              generate<std::mt19937_64, std::negative_binomial_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::negative_binomial_distribution(t32, p),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::chi_squared:
+//             if (old_current != current_item) {
+//                 src.n = 1.0;
+//             }
+//             ImGui::InputDouble("n", &src.n);
+//             break;
 
-        case distribution::geometric:
-            job = std::thread(
-              generate<std::mt19937_64, std::geometric_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::geometric_distribution(p),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::cauchy:
+//             if (old_current != current_item) {
+//                 src.a = 1.0;
+//                 src.b = 0.0;
+//             }
+//             ImGui::InputDouble("a", &src.a);
+//             ImGui::InputDouble("b", &src.b);
+//             break;
 
-        case distribution::poisson:
-            job = std::thread(
-              generate<std::mt19937_64, std::poisson_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::poisson_distribution(mean),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::fisher_f:
+//             if (old_current != current_item) {
+//                 src.m = 1.0;
+//                 src.n = 1.0;
+//             }
+//             ImGui::InputDouble("m", &src.m);
+//             ImGui::InputDouble("s", &src.n);
+//             break;
 
-        case distribution::exponential:
-            job = std::thread(
-              generate<std::mt19937_64, std::exponential_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::exponential_distribution(lambda),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         case distribution_type::student_t:
+//             if (old_current != current_item) {
+//                 src.n = 1.0;
+//             }
+//             ImGui::InputDouble("n", &src.n);
+//             break;
+//         }
 
-        case distribution::gamma:
-            job =
-              std::thread(generate<std::mt19937_64, std::gamma_distribution<>>,
-                          std::ref(os),
-                          std::ref(gen),
-                          std::gamma_distribution(alpha, beta),
-                          size,
-                          file_type,
-                          std::ref(status));
-            break;
+//         std::mt19937_64 dist(1024);
 
-        case distribution::weibull:
-            job = std::thread(
-              generate<std::mt19937_64, std::weibull_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::weibull_distribution(a, b),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//         if (dm.is_running) {
+//             ImGui::Text("File generation in progress %.2f", dm.status);
 
-        case distribution::exterme_value:
-            job = std::thread(
-              generate<std::mt19937_64, std::extreme_value_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::extreme_value_distribution(a, b),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//             if (dm.status < 0.0 || dm.status >= 100.0) {
+//                 dm.job.join();
+//                 dm.status = 0.0;
+//                 dm.is_running = false;
+//                 dm.os.close();
+//             }
+//         } else if (current_item >= 0) {
+//             if (ImGui::Button("Generate"))
+//                 show_file_dialog = true;
 
-        case distribution::normal:
-            job =
-              std::thread(generate<std::mt19937_64, std::normal_distribution<>>,
-                          std::ref(os),
-                          std::ref(gen),
-                          std::normal_distribution(mean, stddev),
-                          size,
-                          file_type,
-                          std::ref(status));
-            break;
+//             if (show_file_dialog) {
+//                 const char* title = "Select file path to save";
+//                 const char8_t* filters[] = { u8".dat", nullptr };
 
-        case distribution::lognormal:
-            job = std::thread(
-              generate<std::mt19937_64, std::lognormal_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::lognormal_distribution(m, s),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//                 ImGui::OpenPopup(title);
+//                 std::filesystem::path path;
+//                 if (save_file_dialog(path, title, filters)) {
+//                     show_file_dialog = false;
 
-        case distribution::chi_squared:
-            job = std::thread(
-              generate<std::mt19937_64, std::chi_squared_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::chi_squared_distribution(n),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//                     log_w.log(5,
+//                               "Save random generated file to %s\n",
+//                               (const char*)path.u8string().c_str());
 
-        case distribution::cauchy:
-            job =
-              std::thread(generate<std::mt19937_64, std::cauchy_distribution<>>,
-                          std::ref(os),
-                          std::ref(gen),
-                          std::cauchy_distribution(a, b),
-                          size,
-                          file_type,
-                          std::ref(status));
-            break;
+//                     if (dm.os = std::ofstream(path); dm.os.is_open())
+//                         dm.start(dist,
+//                                  size,
+//                                  use_binary
+//                                    ? irt::random_file_type::binary
+//                                    : irt::source::random_file_type::text);
+//                 }
+//             }
+//         }
+//     }
+// }
 
-        case distribution::fisher_f:
-            job = std::thread(
-              generate<std::mt19937_64, std::fisher_f_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::fisher_f_distribution(m, n),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+// static void
+// size_in_bytes(const sources& src) noexcept
+// {
+//     constexpr sz K = 1024u;
+//     constexpr sz M = K * 1024u;
+//     constexpr sz G = M * 1024u;
 
-        case distribution::student_t:
-            job = std::thread(
-              generate<std::mt19937_64, std::student_t_distribution<>>,
-              std::ref(os),
-              std::ref(gen),
-              std::student_t_distribution(n),
-              size,
-              file_type,
-              std::ref(status));
-            break;
+//     const sz c = src.csts.size() * sizeof(irt::source::constant) +
+//                  src.bins.size() * sizeof(irt::source::binary_file) +
+//                  src.texts.size() * sizeof(irt::source::text_file);
 
-        default:
-            irt_unreachable();
-        }
-    }
-};
-
-static void
-show_random()
-{
-    static distribution_manager dm;
-    static int current_item = -1;
-    static u64 size = 1024 * 1024;
-    static bool show_file_dialog = false;
-    static bool use_binary = true;
-
-    if (ImGui::CollapsingHeader("Random file source generator")) {
-        ImGui::InputScalar("length", ImGuiDataType_U64, &size);
-        ImGui::Checkbox("binary file", &use_binary);
-
-        int old_current = current_item;
-        ImGui::Combo("Distribution", &current_item, items, IM_ARRAYSIZE(items));
-
-        dm.type = static_cast<distribution>(current_item);
-        switch (dm.type) {
-        case distribution::uniform_int:
-            if (old_current != current_item) {
-                dm.a32 = 0;
-                dm.b32 = 100;
-            }
-            ImGui::InputInt("a", &dm.a32);
-            ImGui::InputInt("b", &dm.b32);
-            break;
-
-        case distribution::uniform_real:
-            if (old_current != current_item) {
-                dm.a = 0.0;
-                dm.b = 1.0;
-            }
-            ImGui::InputDouble("a", &dm.a);
-            ImGui::InputDouble("b", &dm.b);
-            break;
-
-        case distribution::bernouilli:
-            if (old_current != current_item) {
-                dm.p = 0.5;
-            }
-            ImGui::InputDouble("p", &dm.p);
-            break;
-
-        case distribution::binomial:
-            if (old_current != current_item) {
-                dm.p = 0.5;
-                dm.t32 = 1;
-            }
-            ImGui::InputDouble("p", &dm.p);
-            ImGui::InputInt("t", &dm.t32);
-            break;
-
-        case distribution::negative_binomial:
-            if (old_current != current_item) {
-                dm.p = 0.5;
-                dm.t32 = 1;
-            }
-            ImGui::InputDouble("p", &dm.p);
-            ImGui::InputInt("t", &dm.k32);
-            break;
-
-        case distribution::geometric:
-            if (old_current != current_item) {
-                dm.p = 0.5;
-            }
-            ImGui::InputDouble("p", &dm.p);
-            break;
-
-        case distribution::poisson:
-            if (old_current != current_item) {
-                dm.mean = 0.5;
-            }
-            ImGui::InputDouble("mean", &dm.mean);
-            break;
-
-        case distribution::exponential:
-            if (old_current != current_item) {
-                dm.lambda = 1.0;
-            }
-            ImGui::InputDouble("lambda", &dm.lambda);
-            break;
-
-        case distribution::gamma:
-            if (old_current != current_item) {
-                dm.alpha = 1.0;
-                dm.beta = 1.0;
-            }
-            ImGui::InputDouble("alpha", &dm.alpha);
-            ImGui::InputDouble("beta", &dm.beta);
-            break;
-
-        case distribution::weibull:
-            if (old_current != current_item) {
-                dm.a = 1.0;
-                dm.b = 1.0;
-            }
-            ImGui::InputDouble("a", &dm.a);
-            ImGui::InputDouble("b", &dm.b);
-            break;
-
-        case distribution::exterme_value:
-            if (old_current != current_item) {
-                dm.a = 1.0;
-                dm.b = 0.0;
-            }
-            ImGui::InputDouble("a", &dm.a);
-            ImGui::InputDouble("b", &dm.b);
-            break;
-
-        case distribution::normal:
-            if (old_current != current_item) {
-                dm.mean = 0.0;
-                dm.stddev = 1.0;
-            }
-            ImGui::InputDouble("mean", &dm.mean);
-            ImGui::InputDouble("stddev", &dm.stddev);
-            break;
-
-        case distribution::lognormal:
-            if (old_current != current_item) {
-                dm.m = 0.0;
-                dm.s = 1.0;
-            }
-            ImGui::InputDouble("m", &dm.m);
-            ImGui::InputDouble("s", &dm.s);
-            break;
-
-        case distribution::chi_squared:
-            if (old_current != current_item) {
-                dm.n = 1.0;
-            }
-            ImGui::InputDouble("n", &dm.n);
-            break;
-
-        case distribution::cauchy:
-            if (old_current != current_item) {
-                dm.a = 1.0;
-                dm.b = 0.0;
-            }
-            ImGui::InputDouble("a", &dm.a);
-            ImGui::InputDouble("b", &dm.b);
-            break;
-
-        case distribution::fisher_f:
-            if (old_current != current_item) {
-                dm.m = 1.0;
-                dm.n = 1.0;
-            }
-            ImGui::InputDouble("m", &dm.m);
-            ImGui::InputDouble("s", &dm.n);
-            break;
-
-        case distribution::student_t:
-            if (old_current != current_item) {
-                dm.n = 1.0;
-            }
-            ImGui::InputDouble("n", &dm.n);
-            break;
-        }
-
-        std::mt19937_64 dist(1024);
-
-        if (dm.is_running) {
-            ImGui::Text("File generation in progress %.2f", dm.status);
-
-            if (dm.status < 0.0 || dm.status >= 100.0) {
-                dm.job.join();
-                dm.status = 0.0;
-                dm.is_running = false;
-                dm.os.close();
-            }
-        } else if (current_item >= 0) {
-            if (ImGui::Button("Generate"))
-                show_file_dialog = true;
-
-            if (show_file_dialog) {
-                const char* title = "Select file path to save";
-                const char8_t* filters[] = { u8".dat", nullptr };
-
-                ImGui::OpenPopup(title);
-                std::filesystem::path path;
-                if (save_file_dialog(path, title, filters)) {
-                    show_file_dialog = false;
-
-                    log_w.log(5,
-                              "Save random generated file to %s\n",
-                              (const char*)path.u8string().c_str());
-
-                    if (dm.os = std::ofstream(path); dm.os.is_open())
-                        dm.start(dist,
-                                 size,
-                                 use_binary
-                                   ? irt::source::random_file_type::binary
-                                   : irt::source::random_file_type::text);
-                }
-            }
-        }
-    }
-}
-
-static void
-size_in_bytes(const sources& src) noexcept
-{
-    constexpr sz K = 1024u;
-    constexpr sz M = K * 1024u;
-    constexpr sz G = M * 1024u;
-
-    const sz c = src.csts.size() * sizeof(irt::source::constant) +
-                 src.bins.size() * sizeof(irt::source::binary_file) +
-                 src.texts.size() * sizeof(irt::source::text_file);
-
-    if (c / G > 0)
-        ImGui::Text("Memory usage: %f Gb", ((double)c / (double)G));
-    else if (c / M > 0)
-        ImGui::Text("Memory usage: %f Mb", ((double)c / (double)M));
-    else
-        ImGui::Text("Memory usage: %f Kb", ((double)c / (double)K));
-}
+//     if (c / G > 0)
+//         ImGui::Text("Memory usage: %f Gb", ((double)c / (double)G));
+//     else if (c / M > 0)
+//         ImGui::Text("Memory usage: %f Mb", ((double)c / (double)M));
+//     else
+//         ImGui::Text("Memory usage: %f Kb", ((double)c / (double)K));
+// }
 
 void
-sources::show(bool* is_show)
+application::show_sources(bool* is_show)
 {
     ImGui::SetNextWindowPos(ImVec2(70, 450), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
 
     static bool show_file_dialog = false;
-    static irt::source::binary_file* binary_file_ptr = nullptr;
-    static irt::source::text_file* text_file_ptr = nullptr;
+    static irt::binary_file_source* binary_file_ptr = nullptr;
+    static irt::text_file_source* text_file_ptr = nullptr;
 
     if (!ImGui::Begin("External sources", is_show)) {
         ImGui::End();
         return;
     }
 
-    show_random();
+    // show_random();
 
     static ImGuiTableFlags flags =
       ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
@@ -568,7 +266,7 @@ sources::show(bool* is_show)
             small_string<16> label;
             static ImVector<int> selection;
 
-            for (auto& elem : csts) {
+            for (auto& elem : srcs.constant_sources) {
                 const bool item_is_selected = selection.contains(elem.first);
 
                 ImGui::TableNextRow();
@@ -599,7 +297,7 @@ sources::show(bool* is_show)
             ImGui::EndTable();
 
             if (ImGui::Button("New constant source"))
-                new_constant();
+                constant_ptr = srcs.new_constant_source(0);
 
             ImGui::SameLine();
             if (ImGui::Button("Delete##constant")) {
@@ -745,16 +443,18 @@ sources::show(bool* is_show)
 }
 
 void
-sources::show_menu(const char* title, external_source& src)
+application::show_menu(const char* title, source& src)
 {
     small_string<16> tmp;
-    std::pair<const int, source::constant>* constant_ptr = nullptr;
-    std::pair<const int, source::binary_file>* binary_file_ptr = nullptr;
-    std::pair<const int, source::text_file>* text_file_ptr = nullptr;
+
+    std::map<u64, constant_source>::value_type* constant_ptr = nullptr;
+    std::map<u64, binary_file_source>::value_type* binary_file_ptr = nullptr;
+    std::map<u64, text_file_source>::value_type* text_file_ptr = nullptr;
+    std::map<u64, random_source>::value_type* random_ptr = nullptr;
 
     if (ImGui::BeginPopup(title)) {
-        if (!csts.empty() && ImGui::BeginMenu("Constant")) {
-            for (auto& elem : csts) {
+        if (!srcs.constant_sources.empty() && ImGui::BeginMenu("Constant")) {
+            for (auto& elem : srcs.constant_sources) {
                 fmt::format_to_n(tmp.begin(), tmp.capacity(), "{}", elem.first);
                 if (ImGui::MenuItem(tmp.c_str())) {
                     constant_ptr = &elem;
@@ -764,8 +464,9 @@ sources::show_menu(const char* title, external_source& src)
             ImGui::EndMenu();
         }
 
-        if (!bins.empty() && ImGui::BeginMenu("Binary files")) {
-            for (auto& elem : bins) {
+        if (!srcs.binary_file_sources.empty() &&
+            ImGui::BeginMenu("Binary files")) {
+            for (auto& elem : srcs.binary_file_sources) {
                 fmt::format_to_n(tmp.begin(), tmp.capacity(), "{}", elem.first);
                 if (ImGui::MenuItem(tmp.c_str())) {
                     binary_file_ptr = &elem;
@@ -775,8 +476,8 @@ sources::show_menu(const char* title, external_source& src)
             ImGui::EndMenu();
         }
 
-        if (!texts.empty() && ImGui::BeginMenu("Text files")) {
-            for (auto& elem : texts) {
+        if (!srcs.text_file_sources.empty() && ImGui::BeginMenu("Text files")) {
+            for (auto& elem : srcs.text_file_sources) {
                 fmt::format_to_n(tmp.begin(), tmp.capacity(), "{}", elem.first);
                 if (ImGui::MenuItem(tmp.c_str())) {
                     text_file_ptr = &elem;
@@ -786,25 +487,49 @@ sources::show_menu(const char* title, external_source& src)
             ImGui::EndMenu();
         }
 
-        if (constant_ptr != nullptr) {
-            constant_ptr->second.init(src);
-            src.id = constant_ptr->first;
-            constant_ptr = nullptr;
+        if (!srcs.random_sources.empty() && ImGui::BeginMenu("Random")) {
+            for (auto& elem : srcs.random_sources) {
+                fmt::format_to_n(tmp.begin(), tmp.capacity(), "{}", elem.first);
+                if (ImGui::MenuItem(tmp.c_str())) {
+                    random_ptr = &elem;
+                    break;
+                }
+            }
+            ImGui::EndMenu();
         }
-
-        if (binary_file_ptr != nullptr) {
-            binary_file_ptr->second.init(src);
-            src.id = binary_file_ptr->first;
-            binary_file_ptr = nullptr;
-        }
-
-        if (text_file_ptr != nullptr) {
-            text_file_ptr->second.init(src);
-            src.id = text_file_ptr->first;
-            text_file_ptr = nullptr;
-        }
-
         ImGui::EndPopup();
+    }
+
+    if (constant_ptr) {
+        src.size = 0;
+        src.index = 0;
+        src.step = 0;
+        src.client = 0;
+        src.operation = constant_ptr;
+    }
+
+    if (binary_file_ptr) {
+        src.size = 0;
+        src.index = 0;
+        src.step = 0;
+        src.client = 0;
+        src.operation = binary_file_ptr;
+    }
+
+    if (text_file_ptr) {
+        src.size = 0;
+        src.index = 0;
+        src.step = 0;
+        src.client = 0;
+        src.operation = text_file_ptr;
+    }
+
+    if (random_ptr) {
+        src.size = 0;
+        src.index = 0;
+        src.step = 0;
+        src.client = 0;
+        src.operation = random_ptr;
     }
 }
 

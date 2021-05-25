@@ -6,6 +6,7 @@
 #define ORG_VLEPROJECT_IRRITATOR_IO_2020
 
 #include <irritator/core.hpp>
+#include <irritator/external_source.hpp>
 
 #include <algorithm>
 #include <istream>
@@ -493,6 +494,7 @@ private:
 
     std::vector<model_id> map;
     std::vector<source_mapping> sources_mapping;
+    int source_number = 0;
     int model_number = 0;
 
     char temp_1[32];
@@ -511,10 +513,11 @@ public:
     int line_error = 0;
     int column_error = 0;
 
-    status operator()(simulation& sim) noexcept
+    status operator()(simulation& sim, external_source& srcs) noexcept
     {
-        irt_return_if_bad(do_read_model_number());
+        irt_return_if_bad(do_read_data_source(sim, srcs));
 
+        irt_return_if_bad(do_read_model_number());
         for (int i = 0; i != model_number; ++i, ++model_error) {
             int id;
             irt_return_if_bad(do_read_model(sim, &id));
@@ -548,7 +551,214 @@ private:
         column_error = buf.m_column;
     }
 
-    status do_read_data_source(simulation& sim) noexcept
+    status do_read_binary_file_source(external_source& srcs) noexcept
+    {
+        if (!srcs.binary_file_sources.can_alloc(1u))
+            return status::data_array_not_enough_memory;
+
+        auto& elem = srcs.binary_file_sources.alloc();
+
+        std::string file_path;
+        if (!(is >> std::quoted(file_path)))
+            return status::success;
+        elem.file_path = file_path;
+
+        std::size_t size;
+        if (!(is >> size))
+            return status::success;
+
+        return status::success;
+    }
+
+    status do_read_text_file_source(external_source& srcs) noexcept
+    {
+        if (!srcs.text_file_sources.can_alloc(1u))
+            return status::data_array_not_enough_memory;
+
+        auto& elem = srcs.text_file_sources.alloc();
+
+        std::string file_path;
+        if (!(is >> std::quoted(file_path)))
+            return status::success;
+        elem.file_path = file_path;
+
+        std::size_t size;
+        if (!(is >> size))
+            return status::success;
+
+        return status::success;
+    }
+
+    status do_read_constant_source(external_source& srcs) noexcept
+    {
+        if (!srcs.constant_sources.can_alloc(1u))
+            return status::data_array_not_enough_memory;
+
+        auto& elem = srcs.constant_sources.alloc();
+
+        size_t size;
+        if (!(is >> size))
+            return status::success;
+
+        try {
+            elem.buffer.resize(size, 0.0);
+        } catch (const std::bad_alloc& /*e*/) {
+            return status::io_not_enough_memory;
+        }
+
+        for (size_t i = 0; i < size; ++i) {
+            if (!(is >> elem.buffer[i]))
+                return status::success;
+        }
+
+        return status::success;
+    }
+
+    status do_read_random_source(external_source& srcs) noexcept
+    {
+        if (!srcs.random_sources.can_alloc(1u))
+            return status::data_array_not_enough_memory;
+
+        auto& elem = srcs.random_sources.alloc();
+
+        char type_str[30];
+        if (!(is >> type_str))
+            return status::success;
+
+        auto it = binary_find(std::begin(distribution_type_str),
+                              std::end(distribution_type_str),
+                              type_str);
+        if (it == std::end(distribution_type_str))
+            return status::success;
+
+        const auto dist_id =
+          std::distance(std::begin(distribution_type_str), it);
+        elem.distribution = enum_cast<distribution_type>(dist_id);
+
+        switch (elem.distribution) {
+        case distribution_type::uniform_int:
+            if (!(is >> elem.a32 >> elem.b32))
+                return status::success;
+            break;
+
+        case distribution_type::uniform_real:
+            if (!(is >> elem.a >> elem.b))
+                return status::success;
+            break;
+
+        case distribution_type::bernouilli:
+            if (!(is >> elem.p))
+                return status::success;
+            break;
+
+        case distribution_type::binomial:
+            if (!(is >> elem.t32 >> elem.p))
+                return status::success;
+
+        case distribution_type::negative_binomial:
+            if (!(is >> elem.t32 >> elem.p))
+                return status::success;
+            break;
+
+        case distribution_type::geometric:
+            if (!(is >> elem.p))
+                return status::success;
+            break;
+
+        case distribution_type::poisson:
+            if (!(is >> elem.mean))
+                return status::success;
+            break;
+
+        case distribution_type::exponential:
+            if (!(is >> elem.lambda))
+                return status::success;
+            break;
+
+        case distribution_type::gamma:
+            if (!(is >> elem.alpha >> elem.beta))
+                return status::success;
+            break;
+
+        case distribution_type::weibull:
+            if (!(is >> elem.a >> elem.b))
+                return status::success;
+            break;
+
+        case distribution_type::exterme_value:
+            if (!(is >> elem.a >> elem.b))
+                return status::success;
+            break;
+
+        case distribution_type::normal:
+            if (!(is >> elem.mean >> elem.stddev))
+                return status::success;
+            break;
+
+        case distribution_type::lognormal:
+            if (!(is >> elem.m >> elem.s))
+                return status::success;
+            break;
+
+        case distribution_type::chi_squared:
+            if (!(is >> elem.n))
+                return status::success;
+            break;
+
+        case distribution_type::cauchy:
+            if (!(is >> elem.a >> elem.b))
+                return status::success;
+            break;
+
+        case distribution_type::fisher_f:
+            if (!(is >> elem.m >> elem.n))
+                return status::success;
+            break;
+
+        case distribution_type::student_t:
+            if (!(is >> elem.n))
+                return status::success;
+            break;
+        }
+
+        return status::success;
+    }
+
+    status do_read_data_source(external_source& srcs) noexcept
+    {
+        update_error_report();
+
+        int id = 0;
+        if (!is >> id)
+            return status::success;
+
+        char type_str[20];
+        if (!(is >> type_str))
+            return status::success; /* @todo fix errror */
+
+        auto it = binary_find(std::begin(external_source_str),
+                              std::end(external_source_str),
+                              type_str);
+
+        if (it == std::end(external_source_str))
+            return status::success; /* @todo fix error */
+
+        const auto type_id = std::distance(std::begin(external_source_str), it);
+        const auto type = enum_cast<external_source_type>(type_id);
+
+        switch (type) {
+        case external_source_type::binary_file:
+            return do_read_binary_file_source(srcs);
+        case external_source_type::constant:
+            return do_read_constant_source(srcs);
+        case external_source_type::random:
+            return do_read_random_source(srcs);
+        case external_source_type::text_file:
+            return do_read_text_file_source(srcs);
+        }
+    }
+
+    status do_read_data_source(simulation& sim, external_source& srcs) noexcept
     {
         update_error_report();
         int source_mapping_number = 0;
@@ -570,10 +780,7 @@ private:
         }
 
         for (int i = 0; i < source_mapping_number; ++i) {
-            update_error_report();
-
-            auto& src = sim.sources.alloc();
-            irt_return_if_bad(src.init(sim, src, is));
+            irt_return_if_bad(do_read_data_source(srcs));
         }
 
         std::sort(sources_mapping.begin(),
@@ -1029,12 +1236,38 @@ private:
 
     bool read(dynamic_queue& dyn) noexcept
     {
-        return !!(is); /* @todo missing default_ta_source */
+        u64 id;
+        int type;
+
+        if (!(is >> id >> type))
+            return false;
+
+        if (!sim.sources.can_alloc(1u))
+            return false;
+
+        auto& src = sim.sources.alloc();
+        src.id = id;
+        src.type = type;
+
+        return true;
     }
 
     bool read(priority_queue& dyn) noexcept
     {
-        return !!(is); /* @todo missing default_ta_source */
+        u64 id;
+        int type;
+
+        if (!(is >> id >> type))
+            return false;
+
+        if (!sim.sources.can_alloc(1u))
+            return false;
+
+        auto& src = sim.sources.alloc();
+        src.id = id;
+        src.type = type;
+
+        return true;
     }
 
     bool read(generator& dyn) noexcept
@@ -1157,8 +1390,61 @@ struct writer
       : os(os_)
     {}
 
-    status operator()(const simulation& sim) noexcept
+    status operator()(const simulation& sim,
+                      const external_source& srcs) noexcept
     {
+        os << srcs.constant_sources.size() << '\n';
+        if (srcs.constant_sources.size() > 0u) {
+            constant_source* src = nullptr;
+            while (srcs.constant_sources.next(src)) {
+                const auto id = srcs.constant_sources.get_id(src);
+                const auto index = get_index(id);
+                os << index << ' ' << elem.buffer.size() << ' ';
+
+                for (auto elem : elem.buffer)
+                    os << elem << ' ';
+
+                os << '\n';
+            }
+        }
+
+        os << srcs.binary_file_sources.size() << '\n';
+        if (srcs.binary_file_sources.size() > 0u) {
+            binary_file_source* src = nullptr;
+            while (srcs.binary_file_sources.next(src)) {
+                const auto id = srcs.binary_file_sources.get_id(src);
+                const auto index = get_index(id);
+                os << index << ' ' << elem.buffer.size() << ' '
+                   << std::quoted(elem.file_path.string()) << '\n';
+            }
+        }
+
+        os << srcs.text_file_sources.size() << '\n';
+        if (srcs.text_file_sources.size() > 0u) {
+            text_file_source* src = nullptr;
+            while (srcs.text_file_sources.next(src)) {
+                const auto id = srcs.text_file_sources.get_id(src);
+                const auto index = get_index(id);
+                os << index << ' ' << elem.buffer.size() << ' '
+                   << std::quoted(elem.file_path.string()) << '\n';
+            }
+        }
+
+        os << srcs.random_sources.size() << '\n';
+        if (srcs.random_sources.size() > 0u) {
+            random_source* src = nullptr;
+            while (srcs.random_sources.next(src)) {
+                const auto id = srcs.random_sources.get_id(src);
+                const auto index = get_index(id);
+                os << index << ' ' << elem.buffer.size() << ' '
+                   << distribution_type_str[ordinal(elem.distribution)];
+
+                write(elem);
+
+                os << '\n';
+            }
+        }
+
         os << sim.models.size() << '\n';
 
         try {
@@ -1215,6 +1501,80 @@ struct writer
     }
 
 private:
+    void write(const random_source& elem) noexcept
+    {
+        switch (src.distribution) {
+        case distribution_type::uniform_int:
+            os << elem.a32 << ' ' << elem.b32;
+            break;
+
+        case distribution_type::uniform_real:
+            os << elem.a << ' ' << elem.b;
+            break;
+
+        case distribution_type::bernouilli:
+            os << elem.p;
+            break;
+
+        case distribution_type::binomial:
+            os << elem.t32 << ' ' << elem.p;
+
+        case distribution_type::negative_binomial:
+            os << elem.t32 << ' ' << elem.p;
+            break;
+
+        case distribution_type::geometric:
+            os << elem.p;
+            break;
+
+        case distribution_type::poisson:
+            os << elem.mean;
+            break;
+
+        case distribution_type::exponential:
+            os << elem.lambda;
+            break;
+
+        case distribution_type::gamma:
+            os << elem.alpha << ' ' << elem.beta;
+            break;
+
+        case distribution_type::weibull:
+            os << elem.a << ' ' << elem.b;
+            break;
+
+        case distribution_type::exterme_value:
+            os << elem.a << ' ' << elem.b;
+            break;
+
+        case distribution_type::normal:
+            os << elem.mean << ' ' << elem.stddev;
+            break;
+
+        case distribution_type::lognormal:
+            os << elem.m << ' ' << elem.s;
+            break;
+
+        case distribution_type::chi_squared:
+            os << elem.n;
+            break;
+
+        case distribution_type::cauchy:
+            os << elem.a << ' ' << elem.b;
+            break;
+
+        case distribution_type::fisher_f:
+            os << elem.m << ' ' << elem.n;
+            break;
+
+        case distribution_type::student_t:
+            os << elem.n;
+            break;
+        }
+
+        return status::success;
+    }
+
     void write(const none& /*dyn*/) noexcept
     {
         os << "none\n";

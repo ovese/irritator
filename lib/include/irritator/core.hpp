@@ -2888,8 +2888,7 @@ struct simulation;
 
 /*****************************************************************************
  *
- * External data from files or random generators to fill buffer of
- * dynamic_queue, priority_queue or generator.
+ * @c source and @c source_id are data from files or random generators.
  *
  ****************************************************************************/
 
@@ -2899,22 +2898,34 @@ struct source
 {
     enum class operation_type
     {
-        initialize, /** Use to initialize the buffer at simulation init step. */
-        update,     /** Use to update the buffer when all values are read. */
-        finalize    /** Use to clear the buffer at simulation finalize step. */
+        initialize, // Use to initialize the buffer at simulation init step.
+        update,     // Use to update the buffer when all values are read.
+        finalize    // Use to clear the buffer at simulation finalize step.
     };
 
     double* buffer = nullptr;
-    void* user_data = nullptr;
-    i32 size = 0;
-    i32 index = 0;
-    i32 step = 1;
-    i32 client = 0; /** Number of models connected to this source. */
+    u64 id = 0;   // The identifier of the external source (see operation())
+    int type = 0; // The type of the external source (see operation())
+    int size = 0;
+    int index = 0;
+    int step = 1;
+    int client = 0; // Number of models connected to this source.
 
     /**
      * @brief Use to initialize the buffer at simulation init step.
      */
     function_ref<status(source&, operation_type)> operation;
+
+    void reset() noexcept
+    {
+        buffer = nullptr;
+        size = 0;
+        index = 0;
+        step = 1;
+        client = 0;
+        type = 0;
+        id = 0;
+    }
 
     status next(double& value) noexcept
     {
@@ -5656,7 +5667,7 @@ struct queue
         return status::success;
     }
 
-    status transition(time t, time /*e*/, time r) noexcept
+    status transition(time t, time /*e*/, time /*r*/) noexcept
     {
         while (!queue.empty() && queue.front().real[0] <= t)
             queue.pop_front();
@@ -5712,7 +5723,7 @@ struct dynamic_queue
         return status::success;
     }
 
-    status transition(time t, time /*e*/, time r) noexcept
+    status transition(time t, time /*e*/, time /*r*/) noexcept
     {
         while (!queue.empty() && queue.front().real[0] <= t)
             queue.pop_front();
@@ -5722,7 +5733,7 @@ struct dynamic_queue
                 irt_bad_return(status::model_dynamic_queue_full);
 
             double ta;
-            irt_return_if_bad(get_next_data(sim, source_ta, sigma));
+            irt_return_if_bad(get_next_data(sim, source_ta, ta));
             queue.emplace_back(t + ta, msg[0], msg[1], msg[2], msg[3]);
         }
 
@@ -5799,7 +5810,7 @@ public:
         return status::success;
     }
 
-    status transition(time t, time /*e*/, time r) noexcept
+    status transition(time t, time /*e*/, time /*r*/) noexcept
     {
         while (!queue.empty() && queue.front().real[0] <= t)
             queue.pop_front();

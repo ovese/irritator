@@ -1,31 +1,77 @@
-// Copyright (c) 2020 INRA Distributed under the Boost Software License,
+// Copyright (c) 2020-2021 INRA Distributed under the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
-#ifndef ORG_VLEPROJECT_IRRITATOR_source_2021
-#define ORG_VLEPROJECT_IRRITATOR_source_2021
+#ifndef ORG_VLEPROJECT_IRRITATOR_EXTERNAL_SOURCE_2021
+#define ORG_VLEPROJECT_IRRITATOR_EXTERNAL_SOURCE_2021
 
 #include <irritator/core.hpp>
 
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <map>
 #include <random>
 
-namespace irt::sources {
+namespace irt {
+
+enum class external_source_type
+{
+    binary_file,
+    constant,
+    random,
+    text_file
+};
+
+static inline const std::string_view external_source_str[] = { "binary_file",
+                                                               "constant",
+                                                               "random",
+                                                               "text_file" };
+
+enum class distribution_type
+{
+    bernouilli,
+    binomial,
+    cauchy,
+    chi_squared,
+    exponential,
+    exterme_value,
+    fisher_f,
+    gamma,
+    geometric,
+    lognormal,
+    negative_binomial,
+    normal,
+    poisson,
+    student_t,
+    uniform_int,
+    uniform_real,
+    weibull,
+};
+
+static inline const std::string_view distribution_type_str[] = {
+    "bernouilli",        "binomial", "cauchy",  "chi_squared", "exponential",
+    "exterme_value",     "fisher_f", "gamma",   "geometric",   "lognormal",
+    "negative_binomial", "normal",   "poisson", "student_t",   "uniform_int",
+    "uniform_real",      "weibull"
+};
 
 struct constant_source
 {
-    double buffer = 0;
+    std::vector<double> buffer;
 
     status operator()(source& src, source::operation_type /*op*/) noexcept
     {
-        src.buffer = &buffer;
+        if (buffer.empty())
+            buffer.resize(1, 0.0);
+
+        src.buffer = buffer.data();
         src.size = 1;
         src.index = 0;
         src.step = 0;
-        src.user_data = static_cast<void*>(this);
+        src.type = ordinal(external_source_type::constant);
+        src.id = 0;
 
         return status::success;
     }
@@ -52,6 +98,12 @@ struct binary_file_source
 
         buffer_size = 0;
         buffer_index = 0;
+        src.buffer = nullptr;
+        src.size = 0;
+        src.index = 0;
+        src.step = 0;
+        src.type = ordinal(external_source_type::binary_file);
+        src.id = 0;
 
         return status::success;
     }
@@ -62,6 +114,8 @@ struct binary_file_source
         src.size = 0;
         src.index = 0;
         src.step = 0;
+
+        return status::success;
     }
 
     status operator()(source& src, source::operation_type op)
@@ -131,6 +185,12 @@ struct text_file_source
 
         buffer_size = 0;
         buffer_index = 0;
+        src.buffer = nullptr;
+        src.size = 0;
+        src.index = 0;
+        src.step = 0;
+        src.type = ordinal(external_source_type::text_file);
+        src.id = 0;
 
         return status::success;
     }
@@ -141,6 +201,8 @@ struct text_file_source
         src.size = 0;
         src.index = 0;
         src.step = 0;
+
+        return status::success;
     }
 
     status operator()(source& src, source::operation_type op)
@@ -196,27 +258,6 @@ private:
 
 struct random_source
 {
-    enum class distribution_type
-    {
-        uniform_int,
-        uniform_real,
-        bernouilli,
-        binomial,
-        negative_binomial,
-        geometric,
-        poisson,
-        exponential,
-        gamma,
-        weibull,
-        exterme_value,
-        normal,
-        lognormal,
-        chi_squared,
-        cauchy,
-        fisher_f,
-        student_t
-    };
-
     std::array<double, 1024 * 1024> buffer;
     sz buffer_size = 0;
     sz buffer_index = 0;
@@ -313,6 +354,12 @@ struct random_source
 
         buffer_size = std::size(buffer);
         buffer_index = 0;
+        src.buffer = nullptr;
+        src.size = 0;
+        src.index = 0;
+        src.step = 0;
+        src.type = ordinal(external_source_type::random);
+        src.id = 0;
 
         return status::success;
     }
@@ -323,6 +370,8 @@ struct random_source
         src.size = 0;
         src.index = 0;
         src.step = 0;
+
+        return status::success;
     }
 
     status operator()(source& src, source::operation_type op)
@@ -349,7 +398,7 @@ struct random_source
             src.buffer = std::data(buffer);
             src.size = 512;
             src.index = 0;
-            src.step = 1;            
+            src.step = 1;
             buffer_index = 512;
         } else {
             src.buffer = std::data(buffer) + pos;
@@ -363,58 +412,27 @@ struct random_source
     }
 };
 
-enum class external_source_type
-{
-    external_source_binary_file = 0,
-    external_source_constant,
-    external_source_random,
-    external_source_text_file
-};
+enum class constant_source_id : u64;
+enum class binary_file_source_id : u64;
+enum class text_file_source_id : u64;
+enum class random_source_id : u64;
 
 struct external_source
 {
-    std::map<u64, constant_source> constant_sources;
-    std::map<u64, binary_file_source> binary_file_sources;
-    std::map<u64, text_file_source> text_file_sources;
-    std::map<u64, random_source> random_sources;
+    data_array<constant_source, constant_source_id> constant_sources;
+    data_array<binary_file_source, binary_file_source_id> binary_file_sources;
+    data_array<text_file_source, text_file_source_id> text_file_sources;
+    data_array<random_source, random_source_id> random_sources;
+    std::mt19937_64 generator;
 
-    status read(simulation& sim, source& src, std::istream& is)
+    status init(const sz size) noexcept
     {
-        static std::string_view names[] = {
-            "binary-file", "constant", "random", "text-file"
-        };
+        irt_return_if_bad(constant_sources.init(size));
+        irt_return_if_bad(binary_file_sources.init(size));
+        irt_return_if_bad(text_file_sources.init(size));
+        irt_return_if_bad(random_sources.init(size));
 
-        char type[20];
-        if (!(is >> type))
-            return status::success; /* @todo fix errror */
-
-        auto it = binary_find(
-          names,
-          names + std::size(names),
-          type,
-          [](const auto lhs, const auto rhs) { return lhs == rhs; });
-
-        if (it == names + std::size(names))
-            return status::success; /* @todo fix error */
-
-        const auto type_id = std::distance(names, it);
-        if (type_id == 0) {
-            sz size;
-
-            if (!(is >> size))
-                return status::success; /* @todo fix errror */
-
-            if (size == 0)
-                return status::success; /* @todo fix errror */
-
-            std::vector<double> data(size, 0.0);
-            for (sz i = 0; i < size; ++i) {
-                src.type = 0;
-
-                if (!(is >> data[i]))
-                    return status::success; /* @todo fix errror */
-            }
-        }
+        return status::success;
     }
 };
 
@@ -456,6 +474,6 @@ generate_random_file(std::ostream& os,
     return 0;
 }
 
-} // namespace irt::source
+} // namespace irt
 
 #endif
