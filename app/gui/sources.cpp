@@ -301,20 +301,25 @@ application::show_sources(bool* is_show)
                     }
                 }
                 ImGui::TableNextColumn();
-                ImGui::PushID(ordinal(id));
-                ImGui::InputDouble("##cell", &elem.second.value);
+                ImGui::PushID(get_index(id));
+                ImGui::InputDouble("##cell", &src->buffer[0]);
                 ImGui::PopID();
             }
 
             ImGui::EndTable();
 
-            if (ImGui::Button("New constant source"))
-                constant_ptr = srcs.new_constant_source(0);
+            if (ImGui::Button("New constant source")) {
+                if (srcs.constant_sources.can_alloc(1u)) {
+                    auto& new_src = srcs.constant_sources.alloc();
+                    constant_ptr = &new_src;
+                }
+            }
 
             ImGui::SameLine();
             if (ImGui::Button("Delete##constant")) {
                 for (int i = 0, e = selection.size(); i != e; ++i)
-                    csts.erase(selection[i]);
+                    srcs.constant_sources.free(
+                      enum_cast<constant_source_id>(selection[i]));
 
                 selection.clear();
             }

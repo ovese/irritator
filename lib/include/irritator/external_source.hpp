@@ -434,6 +434,44 @@ struct external_source
 
         return status::success;
     }
+
+    status operator()(source& src, const source::operation_type op) noexcept
+    {
+        if (src.type < 0 || src.type > 3)
+            return status::success;
+
+        const auto src_type = enum_cast<external_source_type>(src.type);
+        switch (src_type) {
+        case external_source_type::binary_file: {
+            const auto src_id = enum_cast<binary_file_source_id>(src.id);
+            if (auto* src = binary_file_sources.try_to_get(src_id); src) {
+                return (*src)(src, op);
+            }
+        } break;
+        case external_source_type::constant: {
+            const auto src_id = enum_cast<constant_source_id>(src.id);
+            if (auto* src = constant_sources.try_to_get(src_id); src) {
+                return (*src)(src, op);
+            }
+        } break;
+
+        case external_source_type::random: {
+            const auto src_id = enum_cast<random_source_id>(src.id);
+            if (auto* src = random_sources.try_to_get(src_id); src) {
+                return (*src)(src, op);
+            }
+        } break;
+
+        case external_source_type::text_file: {
+            const auto src_id = enum_cast<text_file_source_id>(src.id);
+            if (auto* src = text_file_sources.try_to_get(src_id); src) {
+                return (*src)(src, op);
+            }
+        } break;
+        }
+
+        return status::success;
+    }
 };
 
 enum class random_file_type

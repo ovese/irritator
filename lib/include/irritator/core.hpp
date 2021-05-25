@@ -2911,11 +2911,6 @@ struct source
     int step = 1;
     int client = 0; // Number of models connected to this source.
 
-    /**
-     * @brief Use to initialize the buffer at simulation init step.
-     */
-    function_ref<status(source&, operation_type)> operation;
-
     void reset() noexcept
     {
         buffer = nullptr;
@@ -2927,14 +2922,14 @@ struct source
         id = 0;
     }
 
-    status next(double& value) noexcept
+    status next(simulation& sim, double& value) noexcept
     {
         if (index >= size) {
-            if (!operation.empty()) {
+            if (sim.source_dispatch.empty())
                 return status::success;
-            }
 
-            irt_return_if_bad(operation(*this, operation_type::update));
+            irt_return_if_bad(
+              sim.source_dispatch(*this, operation_type::update));
             index = 0;
         }
 
@@ -6215,6 +6210,13 @@ struct simulation
     data_array<source, source_id> sources;
 
     scheduller sched;
+
+    /**
+     * @brief Use initialize, generate or finalize data from a source.
+     *
+     * See the @c external_source class for an implementation.
+     */
+    function_ref<status(source&, const source::operation_type)> source_dispatch;
 
     time begin = time_domain<time>::zero;
     time end = time_domain<time>::infinity;
