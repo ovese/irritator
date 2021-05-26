@@ -195,7 +195,7 @@ constexpr Integer
 ordinal(Enum e) noexcept
 {
     static_assert(std::is_enum<Enum>::value,
-                  "Identifier must be a enumeration:");
+                  "Identifier must be a enumeration");
     return static_cast<Integer>(e);
 }
 
@@ -207,7 +207,7 @@ constexpr Enum
 enum_cast(Integer i) noexcept
 {
     static_assert(std::is_enum<Enum>::value,
-                  "Identifier must be a enumeration:");
+                  "Identifier must be a enumeration");
     return static_cast<Enum>(i);
 }
 
@@ -239,7 +239,7 @@ Iterator
 binary_find(Iterator begin, Iterator end, const T& value, Compare comp)
 {
     Iterator i = std::lower_bound(begin, end, value, comp);
-    if (i != end && !comp(value, *i))
+    if (i != end && !comp(*i, value))
         return i;
     else
         return end;
@@ -273,6 +273,8 @@ enum class status
     vector_init_capacity_zero,
     vector_init_capacity_too_big,
     vector_init_not_enough_memory,
+    source_unknown_id,
+    source_empty,
     dynamics_unknown_id,
     dynamics_unknown_port_id,
     dynamics_not_enough_memory,
@@ -309,6 +311,8 @@ enum class status
     gui_not_enough_memory,
     io_not_enough_memory,
     io_file_format_error,
+    io_file_format_source_number_error,
+    io_file_source_full,
     io_file_format_model_error,
     io_file_format_model_number_error,
     io_file_format_model_unknown,
@@ -2909,7 +2913,6 @@ struct source
     int size = 0;
     int index = 0;
     int step = 1;
-    int client = 0; // Number of models connected to this source.
 
     void reset() noexcept
     {
@@ -2917,31 +2920,24 @@ struct source
         size = 0;
         index = 0;
         step = 1;
-        client = 0;
         type = 0;
         id = 0;
     }
 
-    status next(simulation& sim, double& value) noexcept
+    bool next(double& value) noexcept
     {
-        if (index >= size) {
-            if (sim.source_dispatch.empty())
-                return status::success;
-
-            irt_return_if_bad(
-              sim.source_dispatch(*this, operation_type::update));
-            index = 0;
-        }
+        if (index >= size)
+            return false;
 
         value = buffer[index];
         index += step;
 
-        return status::success;
+        return true;
     }
 };
 
 inline status
-get_next_data(simulation* sim, source_id id, double& val) noexcept;
+get_next_data(simulation& sim, source_id id, double& val) noexcept;
 
 /*****************************************************************************
  *
@@ -5085,15 +5081,15 @@ struct generator
     {
         sigma = default_offset;
 
-        irt_return_if_bad(get_next_data(sim, source_value, value));
+        irt_return_if_bad(get_next_data(*sim, source_value, value));
 
         return status::success;
     }
 
     status transition(time /*t*/, time /*e*/, time /*r*/) noexcept
     {
-        irt_return_if_bad(get_next_data(sim, source_ta, sigma));
-        irt_return_if_bad(get_next_data(sim, source_value, value));
+        irt_return_if_bad(get_next_data(*sim, source_ta, sigma));
+        irt_return_if_bad(get_next_data(*sim, source_value, value));
 
         return status::success;
     }
@@ -5728,7 +5724,7 @@ struct dynamic_queue
                 irt_bad_return(status::model_dynamic_queue_full);
 
             double ta;
-            irt_return_if_bad(get_next_data(sim, source_ta, ta));
+            irt_return_if_bad(get_next_data(*sim, source_ta, ta));
             queue.emplace_back(t + ta, msg[0], msg[1], msg[2], msg[3]);
         }
 
@@ -5812,7 +5808,7 @@ public:
 
         for (const auto& msg : x[0].messages) {
             double value;
-            irt_return_if_bad(get_next_data(sim, source_ta, value));
+            irt_return_if_bad(get_next_data(*sim, source_ta, value));
 
             if (auto ret = try_to_insert(value + t, msg); is_bad(ret))
                 irt_bad_return(status::model_priority_queue_full);
@@ -7266,15 +7262,18 @@ public:
 };
 
 inline status
-get_next_data(simulation* sim, source_id id, double& val) noexcept
+get_next_data(simulation& sim, source_id id, double& val) noexcept
 {
-    auto* src = sim->sources.try_to_get(id);
-    irt_return_if_fail(
-      src,
-      status::simulation_not_enough_memory_message_list_allocator); /* @todo
-                                                                       name */
+    auto* src = sim.sources.try_to_get(id);
+    irt_return_if_fail(src, status::source_unknown_id);
 
-    return src->next(val);
+    if (src->next(val))
+        return status::success;
+
+    irt_return_if_bad(
+      sim.source_dispatch(*src, source::operation_type::update));
+
+    return src->next(val) ? status::success : status::source_empty;
 }
 
 } // namespace irt

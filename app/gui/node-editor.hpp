@@ -44,6 +44,8 @@ status_string(const status s) noexcept
         "vector_init_capacity_zero",
         "vector_init_capacity_too_big",
         "vector_init_not_enough_memory",
+        "source_unknown_id",
+        "source_empty",
         "dynamics_unknown_id",
         "dynamics_unknown_port_id",
         "dynamics_not_enough_memory",
@@ -80,6 +82,8 @@ status_string(const status s) noexcept
         "gui_not_enough_memory",
         "io_not_enough_memory",
         "io_file_format_error",
+        "io_file_format_source_number_error",
+        "io_file_source_full",
         "io_file_format_model_error",
         "io_file_format_model_number_error",
         "io_file_format_model_unknown",
@@ -557,7 +561,7 @@ struct application
 
     external_source srcs;
     void show_sources(bool* is_show);
-    void show_menu_sources(const char* title, source& src);
+    void show_menu_sources(const char* title, external_source& srcs, source& src);
 
     bool show_log = true;
     bool show_simulation = true;

@@ -24,10 +24,10 @@ enum class external_source_type
     text_file
 };
 
-static inline const std::string_view external_source_str[] = { "binary_file",
-                                                               "constant",
-                                                               "random",
-                                                               "text_file" };
+static inline const char* external_source_str[] = { "binary_file",
+                                                    "constant",
+                                                    "random",
+                                                    "text_file" };
 
 enum class distribution_type
 {
@@ -50,7 +50,7 @@ enum class distribution_type
     weibull,
 };
 
-static inline const std::string_view distribution_type_str[] = {
+static inline const char* distribution_type_str[] = {
     "bernouilli",        "binomial", "cauchy",  "chi_squared", "exponential",
     "exterme_value",     "fisher_f", "gamma",   "geometric",   "lognormal",
     "negative_binomial", "normal",   "poisson", "student_t",   "uniform_int",
@@ -79,10 +79,9 @@ struct constant_source
 
 struct binary_file_source
 {
-    std::array<double, 1024 * 1024> buffer;
+    std::vector<double> buffer;
     std::filesystem::path file_path;
     std::ifstream ifs;
-    sz buffer_size = 0;
     sz buffer_index = 0;
 
     status init(source& src)
@@ -96,7 +95,7 @@ struct binary_file_source
             ifs.seekg(0);
         }
 
-        buffer_size = 0;
+        buffer.clear();
         buffer_index = 0;
         src.buffer = nullptr;
         src.size = 0;
@@ -110,6 +109,7 @@ struct binary_file_source
 
     status finalize(source& src)
     {
+        buffer.clear();
         src.buffer = nullptr;
         src.size = 0;
         src.index = 0;
@@ -130,6 +130,8 @@ struct binary_file_source
         case source::operation_type::finalize:
             return finalize(src);
         }
+
+        irt_unreachable();
     }
 
     status update(source& src)
@@ -145,7 +147,8 @@ private:
     {
         if (buffer_index + to_unsigned(src.size) > std::size(buffer)) {
             ifs.read(reinterpret_cast<char*>(buffer.data()), std::size(buffer));
-            buffer_size = ifs.gcount();
+            const auto read = ifs.gcount();
+            buffer.resize(read);
 
             src.buffer = std::data(buffer);
             src.size = 512;
@@ -166,7 +169,7 @@ private:
 
 struct text_file_source
 {
-    std::array<double, 1024 * 1024 / 8> buffer;
+    std::vector<double> buffer;
     std::filesystem::path file_path;
     std::ifstream ifs;
     sz buffer_size = 0;
@@ -217,6 +220,8 @@ struct text_file_source
         case source::operation_type::finalize:
             return finalize(src);
         }
+
+        irt_unreachable();
     }
 
     status update(source& src)
@@ -258,7 +263,7 @@ private:
 
 struct random_source
 {
-    std::array<double, 1024 * 1024> buffer;
+    std::vector<double> buffer;
     sz buffer_size = 0;
     sz buffer_index = 0;
     distribution_type distribution = distribution_type::uniform_int;
@@ -386,6 +391,8 @@ struct random_source
         case source::operation_type::finalize:
             return finalize(src);
         }
+
+        irt_unreachable();
     }
 
     status update(source& src)
@@ -444,28 +451,29 @@ struct external_source
         switch (src_type) {
         case external_source_type::binary_file: {
             const auto src_id = enum_cast<binary_file_source_id>(src.id);
-            if (auto* src = binary_file_sources.try_to_get(src_id); src) {
-                return (*src)(src, op);
+            if (auto* bin_src = binary_file_sources.try_to_get(src_id);
+                bin_src) {
+                return (*bin_src)(src, op);
             }
         } break;
         case external_source_type::constant: {
             const auto src_id = enum_cast<constant_source_id>(src.id);
-            if (auto* src = constant_sources.try_to_get(src_id); src) {
-                return (*src)(src, op);
+            if (auto* cst_src = constant_sources.try_to_get(src_id); cst_src) {
+                return (*cst_src)(src, op);
             }
         } break;
 
         case external_source_type::random: {
             const auto src_id = enum_cast<random_source_id>(src.id);
-            if (auto* src = random_sources.try_to_get(src_id); src) {
-                return (*src)(src, op);
+            if (auto* rnd_src = random_sources.try_to_get(src_id); rnd_src) {
+                return (*rnd_src)(src, op);
             }
         } break;
 
         case external_source_type::text_file: {
             const auto src_id = enum_cast<text_file_source_id>(src.id);
-            if (auto* src = text_file_sources.try_to_get(src_id); src) {
-                return (*src)(src, op);
+            if (auto* txt_src = text_file_sources.try_to_get(src_id); txt_src) {
+                return (*txt_src)(src, op);
             }
         } break;
         }

@@ -486,14 +486,27 @@ private:
     streambuf buf;
     std::istream is;
 
-    struct source_mapping
+    struct mapping
     {
-        u32 index = 0u;
-        source_id value = undefined<source_id>();
+        mapping(int index_, u64 value_)
+          : index(index_)
+          , value(value_)
+        {}
+
+        int index = 0;
+        u64 value = 0u;
+
+        bool operator<(const mapping& other) const noexcept
+        {
+            return index < other.index;
+        }
     };
 
     std::vector<model_id> map;
-    std::vector<source_mapping> sources_mapping;
+    std::vector<mapping> constant_mapping;
+    std::vector<mapping> binary_file_mapping;
+    std::vector<mapping> random_mapping;
+    std::vector<mapping> text_file_mapping;
     int source_number = 0;
     int model_number = 0;
 
@@ -510,12 +523,20 @@ public:
 
     int model_error = 0;
     int connection_error = 0;
-    int line_error = 0;
-    int column_error = 0;
+
+    int line_error() const noexcept
+    {
+        return buf.m_line_number;
+    }
+
+    int column_error() const noexcept
+    {
+        return buf.m_column;
+    }
 
     status operator()(simulation& sim, external_source& srcs) noexcept
     {
-        irt_return_if_bad(do_read_data_source(sim, srcs));
+        irt_return_if_bad(do_read_data_source(srcs));
 
         irt_return_if_bad(do_read_model_number());
         for (int i = 0; i != model_number; ++i, ++model_error) {
@@ -529,10 +550,12 @@ public:
     }
 
     status operator()(simulation& sim,
+                      external_source& srcs,
                       function_ref<void(const model_id)> f) noexcept
     {
-        irt_return_if_bad(do_read_model_number());
+        irt_return_if_bad(do_read_data_source(srcs));
 
+        irt_return_if_bad(do_read_model_number());
         for (int i = 0; i != model_number; ++i, ++model_error) {
             int id;
             irt_return_if_bad(do_read_model(sim, &id));
@@ -545,70 +568,77 @@ public:
     }
 
 private:
-    void update_error_report() noexcept
-    {
-        line_error = buf.m_line_number;
-        column_error = buf.m_column;
-    }
-
     status do_read_binary_file_source(external_source& srcs) noexcept
     {
-        if (!srcs.binary_file_sources.can_alloc(1u))
-            return status::data_array_not_enough_memory;
+        u32 id;
+        sz size;
+
+        if (!(is >> id))
+            return status::io_file_format_error;
 
         auto& elem = srcs.binary_file_sources.alloc();
+        auto elem_id = srcs.binary_file_sources.get_id(elem);
 
-        std::string file_path;
-        if (!(is >> std::quoted(file_path)))
-            return status::success;
-        elem.file_path = file_path;
-
-        std::size_t size;
-        if (!(is >> size))
-            return status::success;
+        try {
+            std::string file_path;
+            if (!(is >> std::quoted(file_path) >> size))
+                return status::io_file_format_error;
+            elem.buffer.resize(size, 0.0);
+            elem.file_path = file_path;
+            binary_file_mapping.emplace_back(id, ordinal(elem_id));
+        } catch (const std::bad_alloc& /*e*/) {
+            return status::io_not_enough_memory;
+        }
 
         return status::success;
     }
 
     status do_read_text_file_source(external_source& srcs) noexcept
     {
-        if (!srcs.text_file_sources.can_alloc(1u))
-            return status::data_array_not_enough_memory;
+        u32 id;
+        sz size;
+
+        if (!(is >> id))
+            return status::io_file_format_error;
 
         auto& elem = srcs.text_file_sources.alloc();
+        auto elem_id = srcs.text_file_sources.get_id(elem);
 
-        std::string file_path;
-        if (!(is >> std::quoted(file_path)))
-            return status::success;
-        elem.file_path = file_path;
-
-        std::size_t size;
-        if (!(is >> size))
-            return status::success;
+        try {
+            std::string file_path;
+            if (!(is >> std::quoted(file_path) >> size))
+                return status::io_file_format_error;
+            elem.buffer.resize(size, 0.0);
+            elem.file_path = file_path;
+            text_file_mapping.emplace_back(id, ordinal(elem_id));
+        } catch (const std::bad_alloc& /*e*/) {
+            return status::io_not_enough_memory;
+        }
 
         return status::success;
     }
 
     status do_read_constant_source(external_source& srcs) noexcept
     {
-        if (!srcs.constant_sources.can_alloc(1u))
-            return status::data_array_not_enough_memory;
+        u32 id;
+        sz size;
 
-        auto& elem = srcs.constant_sources.alloc();
+        if (!(is >> id >> size))
+            return status::io_file_format_error;
 
-        size_t size;
-        if (!(is >> size))
-            return status::success;
+        auto& cst = srcs.constant_sources.alloc();
+        auto cst_id = srcs.constant_sources.get_id(cst);
 
         try {
-            elem.buffer.resize(size, 0.0);
+            cst.buffer.resize(size, 0.0);
+            constant_mapping.emplace_back(id, ordinal(cst_id));
         } catch (const std::bad_alloc& /*e*/) {
             return status::io_not_enough_memory;
         }
 
         for (size_t i = 0; i < size; ++i) {
-            if (!(is >> elem.buffer[i]))
-                return status::success;
+            if (!(is >> cst.buffer[i]))
+                return status::io_file_format_error;
         }
 
         return status::success;
@@ -616,108 +646,124 @@ private:
 
     status do_read_random_source(external_source& srcs) noexcept
     {
-        if (!srcs.random_sources.can_alloc(1u))
-            return status::data_array_not_enough_memory;
+        u32 id;
+        sz size;
 
-        auto& elem = srcs.random_sources.alloc();
+        if (!(is >> id >> size))
+            return status::io_file_format_error;
 
         char type_str[30];
         if (!(is >> type_str))
-            return status::success;
+            return status::io_file_format_error;
 
         auto it = binary_find(std::begin(distribution_type_str),
                               std::end(distribution_type_str),
-                              type_str);
+                              type_str,
+                              [](const char* left, const char* right) {
+                                  return std::strcmp(left, right) == 0;
+                              });
+
         if (it == std::end(distribution_type_str))
-            return status::success;
+            return status::io_file_format_error;
 
         const auto dist_id =
           std::distance(std::begin(distribution_type_str), it);
+
+        auto& elem = srcs.random_sources.alloc();
+        auto elem_id = srcs.random_sources.get_id(elem);
+
+        try {
+            elem.buffer.resize(size, 0.0);
+            random_mapping.emplace_back(id, ordinal(elem_id));
+        } catch (const std::bad_alloc& /*e*/) {
+            return status::io_not_enough_memory;
+        }
+
         elem.distribution = enum_cast<distribution_type>(dist_id);
 
         switch (elem.distribution) {
         case distribution_type::uniform_int:
             if (!(is >> elem.a32 >> elem.b32))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::uniform_real:
             if (!(is >> elem.a >> elem.b))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::bernouilli:
             if (!(is >> elem.p))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::binomial:
             if (!(is >> elem.t32 >> elem.p))
-                return status::success;
+                return status::io_file_format_error;
 
         case distribution_type::negative_binomial:
             if (!(is >> elem.t32 >> elem.p))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::geometric:
             if (!(is >> elem.p))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::poisson:
             if (!(is >> elem.mean))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::exponential:
             if (!(is >> elem.lambda))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::gamma:
             if (!(is >> elem.alpha >> elem.beta))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::weibull:
             if (!(is >> elem.a >> elem.b))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::exterme_value:
             if (!(is >> elem.a >> elem.b))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::normal:
             if (!(is >> elem.mean >> elem.stddev))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::lognormal:
             if (!(is >> elem.m >> elem.s))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::chi_squared:
             if (!(is >> elem.n))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::cauchy:
             if (!(is >> elem.a >> elem.b))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::fisher_f:
             if (!(is >> elem.m >> elem.n))
-                return status::success;
+                return status::io_file_format_error;
             break;
 
         case distribution_type::student_t:
             if (!(is >> elem.n))
-                return status::success;
+                return status::io_file_format_error;
             break;
         }
 
@@ -726,68 +772,62 @@ private:
 
     status do_read_data_source(external_source& srcs) noexcept
     {
-        update_error_report();
+        size_t number;
 
-        int id = 0;
-        if (!is >> id)
-            return status::success;
+        /* Read the constant sources */
+        if (!(is >> number))
+            return status::io_file_format_source_number_error;
 
-        char type_str[20];
-        if (!(is >> type_str))
-            return status::success; /* @todo fix errror */
+        if (number > 0u) {
+            if (!srcs.constant_sources.can_alloc(number))
+                return status::io_file_source_full;
 
-        auto it = binary_find(std::begin(external_source_str),
-                              std::end(external_source_str),
-                              type_str);
-
-        if (it == std::end(external_source_str))
-            return status::success; /* @todo fix error */
-
-        const auto type_id = std::distance(std::begin(external_source_str), it);
-        const auto type = enum_cast<external_source_type>(type_id);
-
-        switch (type) {
-        case external_source_type::binary_file:
-            return do_read_binary_file_source(srcs);
-        case external_source_type::constant:
-            return do_read_constant_source(srcs);
-        case external_source_type::random:
-            return do_read_random_source(srcs);
-        case external_source_type::text_file:
-            return do_read_text_file_source(srcs);
-        }
-    }
-
-    status do_read_data_source(simulation& sim, external_source& srcs) noexcept
-    {
-        update_error_report();
-        int source_mapping_number = 0;
-
-        irt_return_if_fail((is >> source_mapping_number),
-                           status::io_file_format_error);
-
-        irt_return_if_fail(source_mapping_number > 0,
-                           status::io_file_format_model_number_error);
-
-        irt_return_if_fail(
-          sim.sources.can_alloc(to_unsigned(source_mapping_number)),
-          status::io_file_format_model_number_error);
-
-        try {
-            sources_mapping.resize(source_mapping_number);
-        } catch (const std::bad_alloc& /*e*/) {
-            return status::io_not_enough_memory;
+            for (int i = 0; i < number; ++i)
+                irt_return_if_bad(do_read_constant_source(srcs));
         }
 
-        for (int i = 0; i < source_mapping_number; ++i) {
-            irt_return_if_bad(do_read_data_source(srcs));
+        /* Read the binary sources */
+        if (!(is >> number))
+            return status::io_file_format_error;
+
+        if (number > 0u) {
+            if (!srcs.binary_file_sources.can_alloc(number))
+                return status::io_file_source_full;
+
+            for (int i = 0; i < number; ++i)
+                irt_return_if_bad(do_read_binary_file_source(srcs));
         }
 
-        std::sort(sources_mapping.begin(),
-                  sources_mapping.end(),
-                  [](const auto left, const auto right) {
-                      return left.index < right.index;
-                  });
+        /* Read the text file sources */
+        if (!(is >> number))
+            return status::io_file_format_error;
+
+        if (number > 0u) {
+            if (!srcs.text_file_sources.can_alloc(number))
+                return status::io_file_source_full;
+
+            for (int i = 0; i < number; ++i)
+                irt_return_if_bad(do_read_text_file_source(srcs));
+        }
+
+        /* Read the random sources */
+        if (!(is >> number))
+            return status::io_file_format_error;
+
+        if (number > 0u) {
+            if (!srcs.random_sources.can_alloc(number))
+                return status::io_file_source_full;
+
+            for (int i = 0; i < number; ++i) {
+                irt_return_if_bad(do_read_random_source(srcs));
+            }
+        }
+
+        std::sort(std::begin(constant_mapping), std::end(constant_mapping));
+        std::sort(std::begin(binary_file_mapping),
+                  std::end(binary_file_mapping));
+        std::sort(std::begin(text_file_mapping), std::end(text_file_mapping));
+        std::sort(std::begin(random_mapping), std::end(random_mapping));
 
         return status::success;
     }
@@ -796,7 +836,6 @@ private:
     {
         model_number = 0;
 
-        update_error_report();
         irt_return_if_fail((is >> model_number), status::io_file_format_error);
 
         irt_return_if_fail(model_number > 0,
@@ -813,7 +852,6 @@ private:
 
     status do_read_model(simulation& sim, int* id) noexcept
     {
-        update_error_report();
         irt_return_if_fail((is >> *id >> temp_1),
                            status::io_file_format_model_error);
 
@@ -830,7 +868,6 @@ private:
         while (is) {
             int mdl_src_id, port_src_index, mdl_dst_id, port_dst_index;
 
-            update_error_report();
             if (!(is >> mdl_src_id >> port_src_index >> mdl_dst_id >>
                   port_dst_index)) {
                 if (is.eof())
@@ -965,7 +1002,6 @@ private:
                            status::io_file_format_dynamics_unknown);
 
         auto& mdl = sim.alloc(type);
-        update_error_report();
 
         auto ret = sim.dispatch(
           mdl, [this, &sim]<typename Dynamics>(Dynamics& dyn) -> status {
@@ -1234,69 +1270,136 @@ private:
         return !!(is >> dyn.default_ta);
     }
 
+    bool read_source(simulation& sim, source& src, int index, int type)
+    {
+        if (type < 0 || type > 3)
+            return false;
+
+        const auto source_type = enum_cast<external_source_type>(type);
+        switch (source_type) {
+        case external_source_type::binary_file: {
+            auto it = binary_find(
+              binary_file_mapping.begin(),
+              binary_file_mapping.end(),
+              index,
+              [](const auto elem, int i) { return i == elem.index; });
+
+            if (it == binary_file_mapping.end())
+                return false;
+
+            src.type = type;
+            src.id = it->value;
+            return true;
+        };
+
+        case external_source_type::constant: {
+            auto it = binary_find(
+              constant_mapping.begin(),
+              constant_mapping.end(),
+              index,
+              [](const auto elem, int i) { return i == elem.index; });
+            if (it == constant_mapping.end())
+                return false;
+
+            src.type = type;
+            src.id = it->value;
+            return true;
+        };
+
+        case external_source_type::text_file: {
+            auto it = binary_find(
+              text_file_mapping.begin(),
+              text_file_mapping.end(),
+              index,
+              [](const auto elem, int i) { return i == elem.index; });
+            if (it == text_file_mapping.end())
+                return false;
+
+            src.type = type;
+            src.id = it->value;
+            return true;
+        };
+
+        case external_source_type::random: {
+            auto it = binary_find(
+              random_mapping.begin(),
+              random_mapping.end(),
+              index,
+              [](const auto elem, int i) { return i == elem.index; });
+            if (it == random_mapping.end())
+                return false;
+
+            src.type = type;
+            src.id = it->value;
+            return true;
+        };
+        }
+
+        irt_unreachable();
+    }
+
     bool read(simulation& sim, dynamic_queue& dyn) noexcept
     {
-        u64 id;
+        int index;
         int type;
 
-        if (!(is >> id >> type))
+        if (!(is >> index >> type))
             return false;
 
         if (!sim.sources.can_alloc(1u))
             return false;
 
-        auto& src = sim.sources.alloc();
-        src.id = id;
-        src.type = type;
+        auto& src_ta = sim.sources.alloc();
+        dyn.source_ta = sim.sources.get_id(src_ta);
+
+        if (!read_source(sim, src_ta, index, type))
+            return false;
 
         return true;
     }
 
     bool read(simulation& sim, priority_queue& dyn) noexcept
     {
-        u64 id;
+        int index;
         int type;
 
-        if (!(is >> id >> type))
+        if (!(is >> index >> type))
             return false;
 
         if (!sim.sources.can_alloc(1u))
             return false;
 
-        auto& src = sim.sources.alloc();
-        src.id = id;
-        src.type = type;
+        auto& src_ta = sim.sources.alloc();
+        dyn.source_ta = sim.sources.get_id(src_ta);
+
+        if (!read_source(sim, src_ta, index, type))
+            return false;
 
         return true;
     }
 
     bool read(simulation& sim, generator& dyn) noexcept
     {
-        u32 source_ta, source_value;
+        int index[2];
+        int type[2];
 
-        if (!(is >> dyn.default_offset >> source_ta >> source_value))
+        if (!(is >> dyn.default_offset >> index[0] >> type[0] >> index[1] >>
+              type[1]))
             return false;
 
-        auto src_ta = binary_find(
-          sources_mapping.begin(),
-          sources_mapping.end(),
-          source_ta,
-          [](const u32 search, const auto& m) { return m.index == search; });
-
-        if (src_ta == sources_mapping.end())
+        if (!sim.sources.can_alloc(2u))
             return false;
 
-        auto src_value = binary_find(
-          sources_mapping.begin(),
-          sources_mapping.end(),
-          source_value,
-          [](const u32 search, const auto& m) { return m.index == search; });
+        auto& src_ta = sim.sources.alloc();
+        auto& src_value = sim.sources.alloc();
+        dyn.source_ta = sim.sources.get_id(src_ta);
+        dyn.source_value = sim.sources.get_id(src_value);
 
-        if (src_value == sources_mapping.end())
+        if (!read_source(sim, src_ta, index[0], type[0]))
             return false;
 
-        dyn.source_ta = src_ta->value;
-        dyn.source_value = src_value->value;
+        if (!read_source(sim, src_value, index[1], type[1]))
+            return false;
 
         return true;
     }
@@ -1803,7 +1906,9 @@ private:
         os << "dynamic_queue ";
 
         if (const auto* src = sim.sources.try_to_get(dyn.source_ta); src) {
-            os << src->id << ' ' << src->type;
+            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
+            const int index = static_cast<int>(index32);
+            os << index << ' ' << src->type;
         } else {
             os << "0 0";
         }
@@ -1816,7 +1921,9 @@ private:
         os << "priority_queue ";
 
         if (const auto* src = sim.sources.try_to_get(dyn.source_ta); src) {
-            os << src->id << ' ' << src->type;
+            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
+            const int index = static_cast<int>(index32);
+            os << index << ' ' << src->type;
         } else {
             os << "0 0";
         }
@@ -1829,7 +1936,9 @@ private:
         os << "generator " << dyn.default_offset << ' ';
 
         if (const auto* src = sim.sources.try_to_get(dyn.source_ta); src) {
-            os << src->id << ' ' << src->type;
+            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
+            const int index = static_cast<int>(index32);
+            os << index << ' ' << src->type;
         } else {
             os << "0 0";
         }
@@ -1837,7 +1946,9 @@ private:
         os << ' ';
 
         if (const auto* src = sim.sources.try_to_get(dyn.source_value); src) {
-            os << src->id << ' ' << src->type;
+            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
+            const int index = static_cast<int>(index32);
+            os << index << ' ' << src->type;
         } else {
             os << "0 0";
         }

@@ -1333,39 +1333,39 @@ add_output_attribute(editor& ed, const Dynamics& dyn) noexcept
 }
 
 static void
-show_dynamics_values(const none& /*dyn*/)
+show_dynamics_values(simulation& /*sim*/, const none& /*dyn*/)
 {}
 
 static void
-show_dynamics_values(const qss1_integrator& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_integrator& dyn)
 {
     ImGui::Text("X %.3f", dyn.X);
     ImGui::Text("dQ %.3f", dyn.default_dQ);
 }
 
 static void
-show_dynamics_values(const qss2_integrator& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_integrator& dyn)
 {
     ImGui::Text("X %.3f", dyn.X);
     ImGui::Text("dQ %.3f", dyn.default_dQ);
 }
 
 static void
-show_dynamics_values(const qss3_integrator& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_integrator& dyn)
 {
     ImGui::Text("X %.3f", dyn.X);
     ImGui::Text("dQ %.3f", dyn.default_dQ);
 }
 
 static void
-show_dynamics_values(const qss1_sum_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_sum_2& dyn)
 {
     ImGui::Text("%.3f", dyn.values[0]);
     ImGui::Text("%.3f", dyn.values[1]);
 }
 
 static void
-show_dynamics_values(const qss1_sum_3& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_sum_3& dyn)
 {
     ImGui::Text("%.3f", dyn.values[0]);
     ImGui::Text("%.3f", dyn.values[1]);
@@ -1373,7 +1373,7 @@ show_dynamics_values(const qss1_sum_3& dyn)
 }
 
 static void
-show_dynamics_values(const qss1_sum_4& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_sum_4& dyn)
 {
     ImGui::Text("%.3f", dyn.values[0]);
     ImGui::Text("%.3f", dyn.values[1]);
@@ -1382,21 +1382,21 @@ show_dynamics_values(const qss1_sum_4& dyn)
 }
 
 static void
-show_dynamics_values(const qss1_multiplier& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_multiplier& dyn)
 {
     ImGui::Text("%.3f", dyn.values[0]);
     ImGui::Text("%.3f", dyn.values[1]);
 }
 
 static void
-show_dynamics_values(const qss1_wsum_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_wsum_2& dyn)
 {
     ImGui::Text("%.3f", dyn.values[0]);
     ImGui::Text("%.3f", dyn.values[1]);
 }
 
 static void
-show_dynamics_values(const qss1_wsum_3& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_wsum_3& dyn)
 {
     ImGui::Text("%.3f", dyn.values[0]);
     ImGui::Text("%.3f", dyn.values[1]);
@@ -1404,7 +1404,7 @@ show_dynamics_values(const qss1_wsum_3& dyn)
 }
 
 static void
-show_dynamics_values(const qss1_wsum_4& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_wsum_4& dyn)
 {
     ImGui::Text("%.3f", dyn.values[0]);
     ImGui::Text("%.3f", dyn.values[1]);
@@ -1413,14 +1413,14 @@ show_dynamics_values(const qss1_wsum_4& dyn)
 }
 
 static void
-show_dynamics_values(const qss2_sum_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_sum_2& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[2]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[3]);
 }
 
 static void
-show_dynamics_values(const qss2_sum_3& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_sum_3& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[3]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[4]);
@@ -1428,7 +1428,7 @@ show_dynamics_values(const qss2_sum_3& dyn)
 }
 
 static void
-show_dynamics_values(const qss2_sum_4& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_sum_4& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[4]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[5]);
@@ -1437,21 +1437,21 @@ show_dynamics_values(const qss2_sum_4& dyn)
 }
 
 static void
-show_dynamics_values(const qss2_multiplier& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_multiplier& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[2]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[3]);
 }
 
 static void
-show_dynamics_values(const qss2_wsum_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_wsum_2& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[2]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[3]);
 }
 
 static void
-show_dynamics_values(const qss2_wsum_3& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_wsum_3& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[3]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[4]);
@@ -1459,7 +1459,7 @@ show_dynamics_values(const qss2_wsum_3& dyn)
 }
 
 static void
-show_dynamics_values(const qss2_wsum_4& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_wsum_4& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[4]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[5]);
@@ -1468,14 +1468,14 @@ show_dynamics_values(const qss2_wsum_4& dyn)
 }
 
 static void
-show_dynamics_values(const qss3_sum_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_sum_2& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[2]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[3]);
 }
 
 static void
-show_dynamics_values(const qss3_sum_3& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_sum_3& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[3]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[4]);
@@ -1483,7 +1483,7 @@ show_dynamics_values(const qss3_sum_3& dyn)
 }
 
 static void
-show_dynamics_values(const qss3_sum_4& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_sum_4& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[4]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[5]);
@@ -1492,21 +1492,21 @@ show_dynamics_values(const qss3_sum_4& dyn)
 }
 
 static void
-show_dynamics_values(const qss3_multiplier& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_multiplier& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[2]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[3]);
 }
 
 static void
-show_dynamics_values(const qss3_wsum_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_wsum_2& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[2]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[3]);
 }
 
 static void
-show_dynamics_values(const qss3_wsum_3& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_wsum_3& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[3]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[4]);
@@ -1514,7 +1514,7 @@ show_dynamics_values(const qss3_wsum_3& dyn)
 }
 
 static void
-show_dynamics_values(const qss3_wsum_4& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_wsum_4& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.values[0], dyn.values[4]);
     ImGui::Text("%.3f %.3f", dyn.values[1], dyn.values[5]);
@@ -1523,51 +1523,27 @@ show_dynamics_values(const qss3_wsum_4& dyn)
 }
 
 static void
-show_dynamics_values(const integrator& dyn)
+show_dynamics_values(simulation& /*sim*/, const integrator& dyn)
 {
     ImGui::Text("value %.3f", dyn.current_value);
 }
 
 static void
-show_dynamics_values(const quantifier& dyn)
+show_dynamics_values(simulation& /*sim*/, const quantifier& dyn)
 {
     ImGui::Text("up threshold %.3f", dyn.m_upthreshold);
     ImGui::Text("down threshold %.3f", dyn.m_downthreshold);
 }
 
 static void
-show_dynamics_values(const adder_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const adder_2& dyn)
 {
     ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
     ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
 }
 
 static void
-show_dynamics_values(const adder_3& dyn)
-{
-    ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
-    ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
-    ImGui::Text("%.3f * %.3f", dyn.values[2], dyn.input_coeffs[2]);
-}
-
-static void
-show_dynamics_values(const adder_4& dyn)
-{
-    ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
-    ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
-    ImGui::Text("%.3f * %.3f", dyn.values[2], dyn.input_coeffs[2]);
-    ImGui::Text("%.3f * %.3f", dyn.values[3], dyn.input_coeffs[3]);
-}
-
-static void
-show_dynamics_values(const mult_2& dyn)
-{
-    ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
-    ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
-}
-
-static void
-show_dynamics_values(const mult_3& dyn)
+show_dynamics_values(simulation& /*sim*/, const adder_3& dyn)
 {
     ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
     ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
@@ -1575,7 +1551,7 @@ show_dynamics_values(const mult_3& dyn)
 }
 
 static void
-show_dynamics_values(const mult_4& dyn)
+show_dynamics_values(simulation& /*sim*/, const adder_4& dyn)
 {
     ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
     ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
@@ -1584,13 +1560,37 @@ show_dynamics_values(const mult_4& dyn)
 }
 
 static void
-show_dynamics_values(const counter& dyn)
+show_dynamics_values(simulation& /*sim*/, const mult_2& dyn)
+{
+    ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
+    ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
+}
+
+static void
+show_dynamics_values(simulation& /*sim*/, const mult_3& dyn)
+{
+    ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
+    ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
+    ImGui::Text("%.3f * %.3f", dyn.values[2], dyn.input_coeffs[2]);
+}
+
+static void
+show_dynamics_values(simulation& /*sim*/, const mult_4& dyn)
+{
+    ImGui::Text("%.3f * %.3f", dyn.values[0], dyn.input_coeffs[0]);
+    ImGui::Text("%.3f * %.3f", dyn.values[1], dyn.input_coeffs[1]);
+    ImGui::Text("%.3f * %.3f", dyn.values[2], dyn.input_coeffs[2]);
+    ImGui::Text("%.3f * %.3f", dyn.values[3], dyn.input_coeffs[3]);
+}
+
+static void
+show_dynamics_values(simulation& /*sim*/, const counter& dyn)
 {
     ImGui::Text("number %ld", static_cast<long>(dyn.number));
 }
 
 static void
-show_dynamics_values(const queue& dyn)
+show_dynamics_values(simulation& /*sim*/, const queue& dyn)
 {
     if (dyn.queue.empty()) {
         ImGui::Text("empty");
@@ -1602,7 +1602,7 @@ show_dynamics_values(const queue& dyn)
 }
 
 static void
-show_dynamics_values(const dynamic_queue& dyn)
+show_dynamics_values(simulation& /*sim*/, const dynamic_queue& dyn)
 {
     if (dyn.queue.empty()) {
         ImGui::Text("empty");
@@ -1614,7 +1614,7 @@ show_dynamics_values(const dynamic_queue& dyn)
 }
 
 static void
-show_dynamics_values(const priority_queue& dyn)
+show_dynamics_values(simulation& /*sim*/, const priority_queue& dyn)
 {
     if (dyn.queue.empty()) {
         ImGui::Text("empty");
@@ -1626,20 +1626,20 @@ show_dynamics_values(const priority_queue& dyn)
 }
 
 static void
-show_dynamics_values(const generator& dyn)
+show_dynamics_values(simulation& /*sim*/, const generator& dyn)
 {
     ImGui::Text("next %.3f", dyn.sigma);
 }
 
 static void
-show_dynamics_values(const constant& dyn)
+show_dynamics_values(simulation& /*sim*/, const constant& dyn)
 {
     ImGui::Text("value %.3f", dyn.value);
 }
 
 template<int QssLevel>
 static void
-show_dynamics_values(const abstract_cross<QssLevel>& dyn)
+show_dynamics_values(simulation& /*sim*/, const abstract_cross<QssLevel>& dyn)
 {
     ImGui::Text("threshold: %.3f", dyn.threshold);
     ImGui::Text("value: %.3f", dyn.value[0]);
@@ -1653,43 +1653,43 @@ show_dynamics_values(const abstract_cross<QssLevel>& dyn)
 }
 
 static void
-show_dynamics_values(const qss1_power& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_power& dyn)
 {
     ImGui::Text("%.3f", dyn.value[0]);
 }
 
 static void
-show_dynamics_values(const qss2_power& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_power& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.value[0], dyn.value[1]);
 }
 
 static void
-show_dynamics_values(const qss3_power& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_power& dyn)
 {
     ImGui::Text("%.3f %.3f %.3f", dyn.value[0], dyn.value[1], dyn.value[2]);
 }
 
 static void
-show_dynamics_values(const qss1_square& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss1_square& dyn)
 {
     ImGui::Text("%.3f", dyn.value[0]);
 }
 
 static void
-show_dynamics_values(const qss2_square& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss2_square& dyn)
 {
     ImGui::Text("%.3f %.3f", dyn.value[0], dyn.value[1]);
 }
 
 static void
-show_dynamics_values(const qss3_square& dyn)
+show_dynamics_values(simulation& /*sim*/, const qss3_square& dyn)
 {
     ImGui::Text("%.3f %.3f %.3f", dyn.value[0], dyn.value[1], dyn.value[2]);
 }
 
 static void
-show_dynamics_values(const cross& dyn)
+show_dynamics_values(simulation& /*sim*/, const cross& dyn)
 {
     ImGui::Text("threshold: %.3f", dyn.threshold);
     ImGui::Text("value: %.3f", dyn.value);
@@ -1698,7 +1698,7 @@ show_dynamics_values(const cross& dyn)
 }
 
 static void
-show_dynamics_values(const accumulator_2& dyn)
+show_dynamics_values(simulation& /*sim*/, const accumulator_2& dyn)
 {
     ImGui::Text("number %.3f", dyn.number);
     ImGui::Text("- 0: %.3f", dyn.numbers[0]);
@@ -1706,17 +1706,17 @@ show_dynamics_values(const accumulator_2& dyn)
 }
 
 static void
-show_dynamics_values(const time_func& dyn)
+show_dynamics_values(simulation& /*sim*/, const time_func& dyn)
 {
     ImGui::Text("value %.3f", dyn.value);
 }
 
 static void
-show_dynamics_inputs(none& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, none& /*dyn*/)
 {}
 
 static void
-show_dynamics_values(const flow& dyn)
+show_dynamics_values(simulation& /*sim*/, const flow& dyn)
 {
     if (dyn.i < dyn.default_size)
         ImGui::Text("value %.3f", dyn.default_data[dyn.i]);
@@ -1725,51 +1725,51 @@ show_dynamics_values(const flow& dyn)
 }
 
 static void
-show_dynamics_inputs(qss1_integrator& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss1_integrator& dyn)
 {
     ImGui::InputDouble("value", &dyn.default_X);
     ImGui::InputDouble("reset", &dyn.default_dQ);
 }
 
 static void
-show_dynamics_inputs(qss2_integrator& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss2_integrator& dyn)
 {
     ImGui::InputDouble("value", &dyn.default_X);
     ImGui::InputDouble("reset", &dyn.default_dQ);
 }
 
 static void
-show_dynamics_inputs(qss3_integrator& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss3_integrator& dyn)
 {
     ImGui::InputDouble("value", &dyn.default_X);
     ImGui::InputDouble("reset", &dyn.default_dQ);
 }
 
 static void
-show_dynamics_inputs(qss1_multiplier& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss1_multiplier& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss1_sum_2& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss1_sum_2& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss1_sum_3& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss1_sum_3& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss1_sum_4& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss1_sum_4& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss1_wsum_2& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss1_wsum_2& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
 }
 
 static void
-show_dynamics_inputs(qss1_wsum_3& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss1_wsum_3& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1777,7 +1777,7 @@ show_dynamics_inputs(qss1_wsum_3& dyn)
 }
 
 static void
-show_dynamics_inputs(qss1_wsum_4& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss1_wsum_4& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1786,70 +1786,30 @@ show_dynamics_inputs(qss1_wsum_4& dyn)
 }
 
 static void
-show_dynamics_inputs(qss2_multiplier& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss2_multiplier& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss2_sum_2& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss2_sum_2& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss2_sum_3& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss2_sum_3& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss2_sum_4& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss2_sum_4& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss2_wsum_2& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss2_wsum_2& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
 }
 
 static void
-show_dynamics_inputs(qss2_wsum_3& dyn)
-{
-    ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
-    ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
-    ImGui::InputDouble("coeff-2", &dyn.default_input_coeffs[2]);
-}
-
-static void
-show_dynamics_inputs(qss2_wsum_4& dyn)
-{
-    ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
-    ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
-    ImGui::InputDouble("coeff-2", &dyn.default_input_coeffs[2]);
-    ImGui::InputDouble("coeff-3", &dyn.default_input_coeffs[3]);
-}
-
-static void
-show_dynamics_inputs(qss3_multiplier& /*dyn*/)
-{}
-
-static void
-show_dynamics_inputs(qss3_sum_2& /*dyn*/)
-{}
-
-static void
-show_dynamics_inputs(qss3_sum_3& /*dyn*/)
-{}
-
-static void
-show_dynamics_inputs(qss3_sum_4& /*dyn*/)
-{}
-
-static void
-show_dynamics_inputs(qss3_wsum_2& dyn)
-{
-    ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
-    ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
-}
-
-static void
-show_dynamics_inputs(qss3_wsum_3& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss2_wsum_3& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1857,7 +1817,7 @@ show_dynamics_inputs(qss3_wsum_3& dyn)
 }
 
 static void
-show_dynamics_inputs(qss3_wsum_4& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss2_wsum_4& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1866,28 +1826,68 @@ show_dynamics_inputs(qss3_wsum_4& dyn)
 }
 
 static void
-show_dynamics_inputs(integrator& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss3_multiplier& /*dyn*/)
+{}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, qss3_sum_2& /*dyn*/)
+{}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, qss3_sum_3& /*dyn*/)
+{}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, qss3_sum_4& /*dyn*/)
+{}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, qss3_wsum_2& dyn)
+{
+    ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
+    ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
+}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, qss3_wsum_3& dyn)
+{
+    ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
+    ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
+    ImGui::InputDouble("coeff-2", &dyn.default_input_coeffs[2]);
+}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, qss3_wsum_4& dyn)
+{
+    ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
+    ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
+    ImGui::InputDouble("coeff-2", &dyn.default_input_coeffs[2]);
+    ImGui::InputDouble("coeff-3", &dyn.default_input_coeffs[3]);
+}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, integrator& dyn)
 {
     ImGui::InputDouble("value", &dyn.default_current_value);
     ImGui::InputDouble("reset", &dyn.default_reset_value);
 }
 
 static void
-show_dynamics_inputs(quantifier& dyn)
+show_dynamics_inputs(simulation& /*sim*/, quantifier& dyn)
 {
     ImGui::InputDouble("quantum", &dyn.default_step_size);
     ImGui::SliderInt("archive length", &dyn.default_past_length, 3, 100);
 }
 
 static void
-show_dynamics_inputs(adder_2& dyn)
+show_dynamics_inputs(simulation& /*sim*/, adder_2& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
 }
 
 static void
-show_dynamics_inputs(adder_3& dyn)
+show_dynamics_inputs(simulation& /*sim*/, adder_3& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1895,7 +1895,7 @@ show_dynamics_inputs(adder_3& dyn)
 }
 
 static void
-show_dynamics_inputs(adder_4& dyn)
+show_dynamics_inputs(simulation& /*sim*/, adder_4& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1904,14 +1904,14 @@ show_dynamics_inputs(adder_4& dyn)
 }
 
 static void
-show_dynamics_inputs(mult_2& dyn)
+show_dynamics_inputs(simulation& /*sim*/, mult_2& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
 }
 
 static void
-show_dynamics_inputs(mult_3& dyn)
+show_dynamics_inputs(simulation& /*sim*/, mult_3& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1919,7 +1919,7 @@ show_dynamics_inputs(mult_3& dyn)
 }
 
 static void
-show_dynamics_inputs(mult_4& dyn)
+show_dynamics_inputs(simulation& /*sim*/, mult_4& dyn)
 {
     ImGui::InputDouble("coeff-0", &dyn.default_input_coeffs[0]);
     ImGui::InputDouble("coeff-1", &dyn.default_input_coeffs[1]);
@@ -1928,55 +1928,55 @@ show_dynamics_inputs(mult_4& dyn)
 }
 
 static void
-show_dynamics_inputs(counter& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, counter& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(queue& dyn)
+show_dynamics_inputs(simulation& /*sim*/, queue& dyn)
 {
     ImGui::InputDouble("time", &dyn.default_ta);
 }
 
 static void
-show_dynamics_inputs(dynamic_queue& dyn)
+show_dynamics_inputs(simulation& /*sim*/, dynamic_queue& dyn)
 {
     const char* title = "Select time sources";
     if (ImGui::Button("Times"))
         ImGui::OpenPopup(title);
     ImGui::SameLine();
 
-    if (dyn.default_ta_source.data == nullptr) {
-        ImGui::TextUnformatted("<None>");
-    } else {
-        ImGui::Text("%" PRIu32 "-%" PRIu32,
-                    dyn.default_ta_source.type,
-                    dyn.default_ta_source.id);
-    }
+    //if (dyn.default_ta_source.data == nullptr) {
+    //    ImGui::TextUnformatted("<None>");
+    //} else {
+    //    ImGui::Text("%" PRIu32 "-%" PRIu32,
+    //                dyn.default_ta_source.type,
+    //                dyn.default_ta_source.id);
+    //}
 
-    app.srcs.show_menu(title, dyn.default_ta_source);
+    //app.srcs.show_menu(title, dyn.default_ta_source);
 }
 
 static void
-show_dynamics_inputs(priority_queue& dyn)
+show_dynamics_inputs(simulation& /*sim*/, priority_queue& dyn)
 {
     const char* title = "Select time sources";
     if (ImGui::Button("Times"))
         ImGui::OpenPopup(title);
     ImGui::SameLine();
 
-    if (dyn.default_ta_source.data == nullptr) {
-        ImGui::TextUnformatted("<None>");
-    } else {
-        ImGui::Text("%" PRIu32 "-%" PRIu32,
-                    dyn.default_ta_source.type,
-                    dyn.default_ta_source.id);
-    }
+    //if (dyn.default_ta_source.data == nullptr) {
+    //    ImGui::TextUnformatted("<None>");
+    //} else {
+    //    ImGui::Text("%" PRIu32 "-%" PRIu32,
+    //                dyn.default_ta_source.type,
+    //                dyn.default_ta_source.id);
+    //}
 
-    app.srcs.show_menu(title, dyn.default_ta_source);
+    //app.srcs.show_menu(title, dyn.default_ta_source);
 }
 
 static void
-show_dynamics_inputs(generator& dyn)
+show_dynamics_inputs(simulation& /*sim*/, generator& dyn)
 {
     ImGui::InputDouble("offset", &dyn.default_offset);
 
@@ -1986,15 +1986,15 @@ show_dynamics_inputs(generator& dyn)
             ImGui::OpenPopup(title);
         ImGui::SameLine();
 
-        if (dyn.default_value_source.data == nullptr) {
-            ImGui::TextUnformatted("<None>");
-        } else {
-            ImGui::Text("%" PRIu32 "-%" PRIu32,
-                        dyn.default_value_source.type,
-                        dyn.default_value_source.id);
-        }
+        //if (dyn.default_value_source.data == nullptr) {
+        //    ImGui::TextUnformatted("<None>");
+        //} else {
+        //    ImGui::Text("%" PRIu32 "-%" PRIu32,
+        //                dyn.default_value_source.type,
+        //                dyn.default_value_source.id);
+        //}
 
-        app.srcs.show_menu(title, dyn.default_value_source);
+        //app.srcs.show_menu(title, dyn.default_value_source);
     }
 
     {
@@ -2003,91 +2003,91 @@ show_dynamics_inputs(generator& dyn)
             ImGui::OpenPopup(title);
         ImGui::SameLine();
 
-        if (dyn.default_ta_source.data == nullptr) {
-            ImGui::TextUnformatted("<None>");
-        } else {
-            ImGui::Text("%" PRIu32 "-%" PRIu32,
-                        dyn.default_ta_source.type,
-                        dyn.default_ta_source.id);
-        }
+        //if (dyn.default_ta_source.data == nullptr) {
+        //    ImGui::TextUnformatted("<None>");
+        //} else {
+        //    ImGui::Text("%" PRIu32 "-%" PRIu32,
+        //                dyn.default_ta_source.type,
+        //                dyn.default_ta_source.id);
+        //}
 
-        app.srcs.show_menu(title, dyn.default_ta_source);
+        //app.srcs.show_menu(title, dyn.default_ta_source);
     }
 }
 
 static void
-show_dynamics_inputs(constant& dyn)
+show_dynamics_inputs(simulation& /*sim*/, constant& dyn)
 {
     ImGui::InputDouble("value", &dyn.default_value);
 }
 
 static void
-show_dynamics_inputs(qss1_cross& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss1_cross& dyn)
 {
     ImGui::InputDouble("threshold", &dyn.default_threshold);
     ImGui::Checkbox("up detection", &dyn.default_detect_up);
 }
 
 static void
-show_dynamics_inputs(qss2_cross& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss2_cross& dyn)
 {
     ImGui::InputDouble("threshold", &dyn.default_threshold);
     ImGui::Checkbox("up detection", &dyn.default_detect_up);
 }
 
 static void
-show_dynamics_inputs(qss3_cross& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss3_cross& dyn)
 {
     ImGui::InputDouble("threshold", &dyn.default_threshold);
     ImGui::Checkbox("up detection", &dyn.default_detect_up);
 }
 
 static void
-show_dynamics_inputs(qss1_power& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss1_power& dyn)
 {
     ImGui::InputDouble("n", &dyn.default_n);
 }
 
 static void
-show_dynamics_inputs(qss2_power& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss2_power& dyn)
 {
     ImGui::InputDouble("n", &dyn.default_n);
 }
 
 static void
-show_dynamics_inputs(qss3_power& dyn)
+show_dynamics_inputs(simulation& /*sim*/, qss3_power& dyn)
 {
     ImGui::InputDouble("n", &dyn.default_n);
 }
 
 static void
-show_dynamics_inputs(qss1_square& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss1_square& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss2_square& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss2_square& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(qss3_square& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, qss3_square& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(cross& dyn)
+show_dynamics_inputs(simulation& /*sim*/, cross& dyn)
 {
     ImGui::InputDouble("threshold", &dyn.default_threshold);
 }
 
 static void
-show_dynamics_inputs(accumulator_2& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, accumulator_2& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(flow& /*dyn*/)
+show_dynamics_inputs(simulation& /*sim*/, flow& /*dyn*/)
 {}
 
 static void
-show_dynamics_inputs(time_func& dyn)
+show_dynamics_inputs(simulation& /*sim*/, time_func& dyn)
 {
     const char* items[] = { "time", "square" };
     ImGui::PushItemWidth(120.0f);
@@ -2106,7 +2106,7 @@ editor::show_model_dynamics(model& mdl) noexcept
         sim.dispatch(mdl, [&](const auto& dyn) {
             add_input_attribute(*this, dyn);
             ImGui::PushItemWidth(120.0f);
-            show_dynamics_values(dyn);
+            show_dynamics_values(sim, dyn);
             ImGui::PopItemWidth();
             add_output_attribute(*this, dyn);
         });
@@ -2116,7 +2116,7 @@ editor::show_model_dynamics(model& mdl) noexcept
             ImGui::PushItemWidth(120.0f);
 
             if (settings.show_dynamics_inputs_in_editor)
-                show_dynamics_inputs(dyn);
+                show_dynamics_inputs(sim, dyn);
             ImGui::PopItemWidth();
             add_output_attribute(*this, dyn);
         });
@@ -2561,7 +2561,7 @@ editor::show_editor() noexcept
               5, "Load file from %s: ", (const char*)path.u8string().c_str());
             if (auto is = std::ifstream(path); is.is_open()) {
                 reader r(is);
-                auto ret = r(sim, [this](model_id id) {
+                auto ret = r(sim, app.srcs, [this](model_id id) {
                     parent(id, undefined<cluster_id>());
 
                     imnodes::SetNodeEditorSpacePos(
@@ -2932,8 +2932,8 @@ editor::show_editor() noexcept
                     observation_outputs_free(index);
                 }
 
-                sim.dispatch(*mdl, []<typename Dynamics>(Dynamics& dyn) {
-                    show_dynamics_inputs(dyn);
+                sim.dispatch(*mdl, [this]<typename Dynamics>(Dynamics& dyn) {
+                    show_dynamics_inputs(this->sim, dyn);
                 });
 
                 ImGui::TreePop();
@@ -3093,7 +3093,7 @@ application_show()
 
             ImGui::MenuItem("Simulation", nullptr, &app.show_simulation);
             ImGui::MenuItem("Plot", nullptr, &app.show_plot);
-            ImGui::MenuItem("Sources", nullptr, &app.show_sources);
+            ImGui::MenuItem("Sources", nullptr, &app.show_sources_window);
             ImGui::MenuItem("Settings", nullptr, &app.show_settings);
             ImGui::MenuItem("Log", nullptr, &app.show_log);
 
@@ -3138,8 +3138,8 @@ application_show()
     if (app.show_demo)
         ImGui::ShowDemoWindow();
 
-    if (app.show_sources)
-        app.srcs.show(&app.show_sources);
+    if (app.show_sources_window)
+        app.show_sources(&app.show_sources_window);
 
     return ret;
 }

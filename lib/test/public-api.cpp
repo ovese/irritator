@@ -1014,11 +1014,12 @@ main()
             int i = 0;
 
             irt::simulation sim;
+            irt::external_source srcs;
             expect(irt::is_success(sim.init(64lu, 32lu)));
 
             irt::reader r(is);
             expect(
-              irt::is_success(r(sim, [&i](irt::model_id /*id*/) { ++i; })));
+              irt::is_success(r(sim, srcs, [&i](irt::model_id /*id*/) { ++i; })));
             expect(i == 49);
 
             expect(sim.models.size() == 49);
@@ -1036,8 +1037,8 @@ main()
 
             irt::reader r(is);
             expect(irt::is_bad(r(sim, srcs)));
-            expect(r.line_error == 2);
-            expect(r.column_error == 17);
+            expect(r.line_error() == 2);
+            expect(r.column_error() == 17);
             expect(r.model_error == 0);
             expect(r.connection_error == 0);
 
