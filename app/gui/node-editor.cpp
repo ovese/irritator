@@ -1634,6 +1634,7 @@ show_dynamics_values(simulation& /*sim*/, const generator& dyn)
 static void
 show_dynamics_values(simulation& /*sim*/, const constant& dyn)
 {
+    ImGui::Text("next %.3f", dyn.sigma);
     ImGui::Text("value %.3f", dyn.value);
 }
 
@@ -1945,7 +1946,7 @@ show_dynamics_inputs(simulation& /*sim*/, dynamic_queue& dyn)
         ImGui::OpenPopup(title);
     ImGui::SameLine();
 
-    //if (dyn.default_ta_source.data == nullptr) {
+    // if (dyn.default_ta_source.data == nullptr) {
     //    ImGui::TextUnformatted("<None>");
     //} else {
     //    ImGui::Text("%" PRIu32 "-%" PRIu32,
@@ -1953,7 +1954,7 @@ show_dynamics_inputs(simulation& /*sim*/, dynamic_queue& dyn)
     //                dyn.default_ta_source.id);
     //}
 
-    //app.srcs.show_menu(title, dyn.default_ta_source);
+    // app.srcs.show_menu(title, dyn.default_ta_source);
 }
 
 static void
@@ -1964,7 +1965,7 @@ show_dynamics_inputs(simulation& /*sim*/, priority_queue& dyn)
         ImGui::OpenPopup(title);
     ImGui::SameLine();
 
-    //if (dyn.default_ta_source.data == nullptr) {
+    // if (dyn.default_ta_source.data == nullptr) {
     //    ImGui::TextUnformatted("<None>");
     //} else {
     //    ImGui::Text("%" PRIu32 "-%" PRIu32,
@@ -1972,11 +1973,11 @@ show_dynamics_inputs(simulation& /*sim*/, priority_queue& dyn)
     //                dyn.default_ta_source.id);
     //}
 
-    //app.srcs.show_menu(title, dyn.default_ta_source);
+    // app.srcs.show_menu(title, dyn.default_ta_source);
 }
 
 static void
-show_dynamics_inputs(simulation& /*sim*/, generator& dyn)
+show_dynamics_inputs(simulation& sim, generator& dyn)
 {
     ImGui::InputDouble("offset", &dyn.default_offset);
 
@@ -1986,15 +1987,11 @@ show_dynamics_inputs(simulation& /*sim*/, generator& dyn)
             ImGui::OpenPopup(title);
         ImGui::SameLine();
 
-        //if (dyn.default_value_source.data == nullptr) {
-        //    ImGui::TextUnformatted("<None>");
-        //} else {
-        //    ImGui::Text("%" PRIu32 "-%" PRIu32,
-        //                dyn.default_value_source.type,
-        //                dyn.default_value_source.id);
-        //}
-
-        //app.srcs.show_menu(title, dyn.default_value_source);
+        if (auto* src = sim.sources.try_to_get(dyn.default_source_value); src) {
+            ImGui::Text("%" PRIu64 "-%d", src->id, src->type);
+        } else {
+            ImGui::TextUnformatted("None");
+        }
     }
 
     {
@@ -2003,14 +2000,19 @@ show_dynamics_inputs(simulation& /*sim*/, generator& dyn)
             ImGui::OpenPopup(title);
         ImGui::SameLine();
 
-        //if (dyn.default_ta_source.data == nullptr) {
+        if (auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
+            ImGui::Text("%" PRIu64 "-%d", src->id, src->type);
+        } else {
+            ImGui::TextUnformatted("None");
+        }
+
+        // if (dyn.default_ta_source.data == nullptr) {
         //    ImGui::TextUnformatted("<None>");
         //} else {
         //    ImGui::Text("%" PRIu32 "-%" PRIu32,
         //                dyn.default_ta_source.type,
         //                dyn.default_ta_source.id);
         //}
-
         //app.srcs.show_menu(title, dyn.default_ta_source);
     }
 }
@@ -2949,6 +2951,10 @@ editor::show_editor() noexcept
 editor*
 application::alloc_editor()
 {
+    if (srcs.binary_file_sources.capacity() == 0) {
+        srcs.init(50);
+    }
+
     if (!editors.can_alloc(1u)) {
         log_w.log(2, "Too many open editor\n");
         return nullptr;

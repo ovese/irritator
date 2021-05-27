@@ -7,12 +7,12 @@
 
 #include <irritator/core.hpp>
 
-#include <array>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <map>
 #include <random>
+#include <vector>
 
 namespace irt {
 
@@ -59,6 +59,7 @@ static inline const char* distribution_type_str[] = {
 
 struct constant_source
 {
+    small_string<23> name;
     std::vector<double> buffer;
 
     status operator()(source& src, source::operation_type /*op*/) noexcept
@@ -79,6 +80,7 @@ struct constant_source
 
 struct binary_file_source
 {
+    small_string<23> name;
     std::vector<double> buffer;
     std::filesystem::path file_path;
     std::ifstream ifs;
@@ -169,6 +171,7 @@ private:
 
 struct text_file_source
 {
+    small_string<23> name;
     std::vector<double> buffer;
     std::filesystem::path file_path;
     std::ifstream ifs;
@@ -263,6 +266,7 @@ private:
 
 struct random_source
 {
+    small_string<23> name;
     std::vector<double> buffer;
     sz buffer_size = 0;
     sz buffer_index = 0;

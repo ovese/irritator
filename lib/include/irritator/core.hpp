@@ -5074,14 +5074,16 @@ struct generator
 
     simulation* sim = nullptr;
     double default_offset = 0.0;
-    source_id source_ta = undefined<source_id>();
-    source_id source_value = undefined<source_id>();
+    source_id default_source_ta = undefined<source_id>();
+    source_id default_source_value = undefined<source_id>();
+    source_id source_ta;
+    source_id source_value;
 
     status initialize() noexcept
     {
         sigma = default_offset;
-
-        irt_return_if_bad(get_next_data(*sim, source_value, value));
+        source_ta = default_source_ta;
+        source_value = default_source_value;
 
         return status::success;
     }
@@ -5704,12 +5706,15 @@ struct dynamic_queue
     flat_double_list<dated_message> queue;
 
     simulation* sim = nullptr;
-    source_id source_ta = undefined<source_id>();
+    source_id default_source_ta = undefined<source_id>();
+    source_id source_ta;
 
     status initialize() noexcept
     {
         sigma = time_domain<time>::infinity;
         queue.clear();
+
+        source_ta = default_source_ta;
 
         return status::success;
     }
@@ -5763,7 +5768,8 @@ struct priority_queue
     double default_ta = 1.0;
 
     simulation* sim = nullptr;
-    source_id source_ta = undefined<source_id>();
+    source_id default_source_ta = undefined<source_id>();
+    source_id source_ta;
 
 private:
     status try_to_insert(const time t, const message& msg) noexcept

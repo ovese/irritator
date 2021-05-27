@@ -1350,7 +1350,7 @@ private:
             return false;
 
         auto& src_ta = sim.sources.alloc();
-        dyn.source_ta = sim.sources.get_id(src_ta);
+        dyn.default_source_ta = sim.sources.get_id(src_ta);
 
         if (!read_source(sim, src_ta, index, type))
             return false;
@@ -1370,7 +1370,7 @@ private:
             return false;
 
         auto& src_ta = sim.sources.alloc();
-        dyn.source_ta = sim.sources.get_id(src_ta);
+        dyn.default_source_ta = sim.sources.get_id(src_ta);
 
         if (!read_source(sim, src_ta, index, type))
             return false;
@@ -1392,8 +1392,8 @@ private:
 
         auto& src_ta = sim.sources.alloc();
         auto& src_value = sim.sources.alloc();
-        dyn.source_ta = sim.sources.get_id(src_ta);
-        dyn.source_value = sim.sources.get_id(src_value);
+        dyn.default_source_ta = sim.sources.get_id(src_ta);
+        dyn.default_source_value = sim.sources.get_id(src_value);
 
         if (!read_source(sim, src_ta, index[0], type[0]))
             return false;
@@ -1905,7 +1905,7 @@ private:
     {
         os << "dynamic_queue ";
 
-        if (const auto* src = sim.sources.try_to_get(dyn.source_ta); src) {
+        if (const auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
             const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
             const int index = static_cast<int>(index32);
             os << index << ' ' << src->type;
@@ -1920,7 +1920,7 @@ private:
     {
         os << "priority_queue ";
 
-        if (const auto* src = sim.sources.try_to_get(dyn.source_ta); src) {
+        if (const auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
             const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
             const int index = static_cast<int>(index32);
             os << index << ' ' << src->type;
@@ -1935,7 +1935,7 @@ private:
     {
         os << "generator " << dyn.default_offset << ' ';
 
-        if (const auto* src = sim.sources.try_to_get(dyn.source_ta); src) {
+        if (const auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
             const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
             const int index = static_cast<int>(index32);
             os << index << ' ' << src->type;
@@ -1945,7 +1945,7 @@ private:
 
         os << ' ';
 
-        if (const auto* src = sim.sources.try_to_get(dyn.source_value); src) {
+        if (const auto* src = sim.sources.try_to_get(dyn.default_source_value); src) {
             const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
             const int index = static_cast<int>(index32);
             os << index << ' ' << src->type;
