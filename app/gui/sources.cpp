@@ -277,27 +277,8 @@ show_random_distribution_input(random_source& src) noexcept
     }
 }
 
-// static void
-// size_in_bytes(const sources& src) noexcept
-//{
-//    constexpr sz K = 1024u;
-//    constexpr sz M = K * 1024u;
-//    constexpr sz G = M * 1024u;
-//
-//    const sz c = src.csts.size() * sizeof(irt::source::constant) +
-//                 src.bins.size() * sizeof(irt::source::binary_file) +
-//                 src.texts.size() * sizeof(irt::source::text_file);
-//
-//    if (c / G > 0)
-//        ImGui::Text("Memory usage: %f Gb", ((double)c / (double)G));
-//    else if (c / M > 0)
-//        ImGui::Text("Memory usage: %f Mb", ((double)c / (double)M));
-//    else
-//        ImGui::Text("Memory usage: %f Kb", ((double)c / (double)K));
-//}
-
-void
-application::show_sources(bool* is_show)
+ void
+ application::show_sources(bool* is_show)
 {
     ImGui::SetNextWindowPos(ImVec2(70, 450), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
@@ -321,7 +302,8 @@ application::show_sources(bool* is_show)
 
     if (ImGui::BeginTable("All sources",
                           5,
-                          ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+                          ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg))
+                          {
         ImGui::TableSetupColumn("id", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("name", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("type", ImGuiTableColumnFlags_WidthStretch);
@@ -384,7 +366,8 @@ application::show_sources(bool* is_show)
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             format(
-              label, "{}-{}", ordinal(external_source_type::text_file), index);
+              label, "{}-{}", ordinal(external_source_type::text_file),
+              index);
             if (ImGui::Selectable(label.c_str(),
                                   item_is_selected,
                                   ImGuiSelectableFlags_SpanAllColumns)) {
@@ -471,7 +454,8 @@ application::show_sources(bool* is_show)
 
         ImGuiStyle& style = ImGui::GetStyle();
         const float width =
-          (ImGui::GetContentRegionAvail().x - 4.f * style.ItemSpacing.x) / 5.f;
+          (ImGui::GetContentRegionAvail().x - 4.f * style.ItemSpacing.x)
+          / 5.f;
         ImVec2 button_sz(width, 30);
 
         if (ImGui::Button("+constant", button_sz)) {
@@ -661,7 +645,8 @@ application::show_sources(bool* is_show)
             const char8_t* filters[] = { u8".dat", nullptr };
 
             ImGui::OpenPopup(title);
-            if (load_file_dialog(binary_file_ptr->file_path, title, filters)) {
+            if (load_file_dialog(binary_file_ptr->file_path, title, filters))
+            {
                 show_file_dialog = false;
                 binary_file_ptr = nullptr;
             }
@@ -679,17 +664,13 @@ application::show_sources(bool* is_show)
         }
     }
 
-    // size_in_bytes(*this);
-
     ImGui::End();
 }
 
 void
-application::show_menu_sources(const char* title,
-                               external_source& srcs,
-                               source& src)
+application::show_menu_sources(const char* title, source& src)
 {
-    small_string<16> tmp;
+    small_string<64> tmp;
 
     constant_source* constant_ptr = nullptr;
     binary_file_source* binary_file_ptr = nullptr;
@@ -703,7 +684,11 @@ application::show_menu_sources(const char* title,
                 const auto id = srcs.constant_sources.get_id(s);
                 const auto index = get_index(id);
 
-                format(tmp, "{}", index);
+                format(tmp,
+                       "{}-{}-{}",
+                       ordinal(external_source_type::constant),
+                       index,
+                       s->name.c_str());
                 if (ImGui::MenuItem(tmp.c_str())) {
                     constant_ptr = s;
                     break;
@@ -718,7 +703,11 @@ application::show_menu_sources(const char* title,
                 const auto id = srcs.binary_file_sources.get_id(s);
                 const auto index = get_index(id);
 
-                format(tmp, "{}", index);
+                format(tmp,
+                       "{}-{}-{}",
+                       ordinal(external_source_type::binary_file),
+                       index,
+                       s->name.c_str());
                 if (ImGui::MenuItem(tmp.c_str())) {
                     binary_file_ptr = s;
                     break;
@@ -733,7 +722,11 @@ application::show_menu_sources(const char* title,
                 const auto id = srcs.text_file_sources.get_id(s);
                 const auto index = get_index(id);
 
-                format(tmp, "{}", index);
+                format(tmp,
+                       "{}-{}-{}",
+                       ordinal(external_source_type::text_file),
+                       index,
+                       s->name.c_str());
                 if (ImGui::MenuItem(tmp.c_str())) {
                     text_file_ptr = s;
                     break;
@@ -748,7 +741,11 @@ application::show_menu_sources(const char* title,
                 const auto id = srcs.random_sources.get_id(s);
                 const auto index = get_index(id);
 
-                format(tmp, "{}", index);
+                format(tmp,
+                       "{}-{}-{}",
+                       ordinal(external_source_type::binary_file),
+                       index,
+                       s->name.c_str());
                 if (ImGui::MenuItem(tmp.c_str())) {
                     random_ptr = s;
                     break;

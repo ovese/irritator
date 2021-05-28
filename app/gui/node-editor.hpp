@@ -561,7 +561,7 @@ struct application
 
     external_source srcs;
     void show_sources(bool* is_show);
-    void show_menu_sources(const char* title, external_source& srcs, source& src);
+    void show_menu_sources(const char* title, source& src);
 
     bool show_log = true;
     bool show_simulation = true;

@@ -6637,7 +6637,7 @@ public:
         irt_return_if_bad(models.init(model_capacity));
         irt_return_if_bad(messages.init(messages_capacity));
         irt_return_if_bad(observers.init(model_capacity));
-
+        irt_return_if_bad(sources.init(model_capacity));
         irt_return_if_bad(
           flat_double_list_shared_allocator.init(model_capacity * ten));
 

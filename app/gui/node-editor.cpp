@@ -1977,44 +1977,213 @@ show_dynamics_inputs(simulation& /*sim*/, priority_queue& dyn)
 }
 
 static void
+show_external_source(simulation& sim, source& src)
+{
+    if (src.type < 0 || src.type > 3)
+        return;
+
+    const auto type = enum_cast<external_source_type>(src.type);
+    ImGui::TextUnformatted(external_source_str[src.type]);
+}
+
+static void
+show_external_sources_combo(const char* title, simulation& sim, source& src)
+{
+    small_string<63> label("None");
+
+    if (src.type < 0 || src.type > 3) {
+        src.reset();
+    } else {
+        switch (enum_cast<external_source_type>(src.type)) {
+        case external_source_type::binary_file: {
+            const auto id = enum_cast<binary_file_source_id>(src.id);
+            const auto index = get_index(id);
+            if (auto* es = app.srcs.binary_file_sources.try_to_get(id)) {
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::binary_file),
+                       index,
+                       es->name.c_str());
+            } else {
+                src.reset();
+            }
+        } break;
+        case external_source_type::constant: {
+            const auto id = enum_cast<constant_source_id>(src.id);
+            const auto index = get_index(id);
+            if (auto* es = app.srcs.constant_sources.try_to_get(id)) {
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::constant),
+                       index,
+                       es->name.c_str());
+            } else {
+                src.reset();
+            }
+        } break;
+        case external_source_type::random: {
+            const auto id = enum_cast<random_source_id>(src.id);
+            const auto index = get_index(id);
+            if (auto* es = app.srcs.random_sources.try_to_get(id)) {
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::random),
+                       index,
+                       es->name.c_str());
+            } else {
+                src.reset();
+            }
+        } break;
+        case external_source_type::text_file: {
+            const auto id = enum_cast<text_file_source_id>(src.id);
+            const auto index = get_index(id);
+            if (auto* es = app.srcs.text_file_sources.try_to_get(id)) {
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::text_file),
+                       index,
+                       es->name.c_str());
+            } else {
+                src.reset();
+            }
+        } break;
+        default:
+            irt_unreachable();
+        }
+    }
+
+    if (ImGui::BeginCombo(title, label.c_str())) {
+        {
+            bool is_selected = src.type == 0 && src.id == 0;
+            if (ImGui::Selectable("None", is_selected)) {
+                src.reset();
+            }
+        }
+
+        {
+            constant_source* s = nullptr;
+            while (app.srcs.constant_sources.next(s)) {
+                const auto id = app.srcs.constant_sources.get_id(s);
+                const auto index = get_index(id);
+
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::constant),
+                       index,
+                       s->name.c_str());
+
+                bool is_selected =
+                  src.type == ordinal(external_source_type::constant) &&
+                  src.id == ordinal(id);
+                if (ImGui::Selectable(label.c_str(), is_selected)) {
+                    src.type = ordinal(external_source_type::constant);
+                    src.id = ordinal(id);
+                    ImGui::EndCombo();
+                    return;
+                }
+            }
+        }
+
+        {
+            binary_file_source* s = nullptr;
+            while (app.srcs.binary_file_sources.next(s)) {
+                const auto id = app.srcs.binary_file_sources.get_id(s);
+                const auto index = get_index(id);
+
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::binary_file),
+                       index,
+                       s->name.c_str());
+
+                bool is_selected =
+                  src.type == ordinal(external_source_type::binary_file) &&
+                  src.id == ordinal(id);
+                if (ImGui::Selectable(label.c_str(), is_selected)) {
+                    src.type = ordinal(external_source_type::binary_file);
+                    src.id = ordinal(id);
+                    ImGui::EndCombo();
+                    return;
+                }
+            }
+        }
+
+        {
+            random_source* s = nullptr;
+            while (app.srcs.random_sources.next(s)) {
+                const auto id = app.srcs.random_sources.get_id(s);
+                const auto index = get_index(id);
+
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::random),
+                       index,
+                       s->name.c_str());
+
+                bool is_selected =
+                  src.type == ordinal(external_source_type::random) &&
+                  src.id == ordinal(id);
+                if (ImGui::Selectable(label.c_str(), is_selected)) {
+                    src.type = ordinal(external_source_type::random);
+                    src.id = ordinal(id);
+                    ImGui::EndCombo();
+                    return;
+                }
+            }
+        }
+
+        {
+            text_file_source* s = nullptr;
+            while (app.srcs.text_file_sources.next(s)) {
+                const auto id = app.srcs.text_file_sources.get_id(s);
+                const auto index = get_index(id);
+
+                format(label,
+                       "{}-{} {}",
+                       ordinal(external_source_type::text_file),
+                       index,
+                       s->name.c_str());
+
+                bool is_selected =
+                  src.type == ordinal(external_source_type::text_file) &&
+                  src.id == ordinal(id);
+                if (ImGui::Selectable(label.c_str(), is_selected)) {
+                    src.type = ordinal(external_source_type::text_file);
+                    src.id = ordinal(id);
+                    ImGui::EndCombo();
+                    return;
+                }
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+}
+
+static void
 show_dynamics_inputs(simulation& sim, generator& dyn)
 {
     ImGui::InputDouble("offset", &dyn.default_offset);
 
-    {
-        const char* title = "Select values sources";
-        if (ImGui::Button("Values"))
-            ImGui::OpenPopup(title);
-        ImGui::SameLine();
-
-        if (auto* src = sim.sources.try_to_get(dyn.default_source_value); src) {
-            ImGui::Text("%" PRIu64 "-%d", src->id, src->type);
-        } else {
-            ImGui::TextUnformatted("None");
-        }
+    auto* src_value = sim.sources.try_to_get(dyn.default_source_value);
+    if (!src_value && sim.sources.can_alloc(1u)) {
+        auto& new_src = sim.sources.alloc();
+        dyn.default_source_value = sim.sources.get_id(new_src);
+        src_value = &new_src;
     }
 
-    {
-        const char* title = "Select time sources";
-        if (ImGui::Button("Times"))
-            ImGui::OpenPopup(title);
-        ImGui::SameLine();
+    if (src_value)
+        show_external_sources_combo("source", sim, *src_value);
 
-        if (auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
-            ImGui::Text("%" PRIu64 "-%d", src->id, src->type);
-        } else {
-            ImGui::TextUnformatted("None");
-        }
-
-        // if (dyn.default_ta_source.data == nullptr) {
-        //    ImGui::TextUnformatted("<None>");
-        //} else {
-        //    ImGui::Text("%" PRIu32 "-%" PRIu32,
-        //                dyn.default_ta_source.type,
-        //                dyn.default_ta_source.id);
-        //}
-        //app.srcs.show_menu(title, dyn.default_ta_source);
+    auto* src_ta = sim.sources.try_to_get(dyn.default_source_ta);
+    if (!src_ta && sim.sources.can_alloc(1u)) {
+        auto& new_src = sim.sources.alloc();
+        dyn.default_source_ta = sim.sources.get_id(new_src);
+        src_ta = &new_src;
     }
+
+    if (src_ta)
+        show_external_sources_combo("time", sim, *src_ta);
 }
 
 static void
