@@ -1348,13 +1348,7 @@ private:
 
         external_source_type source_type;
         if (external_source_type_cast(type, &source_type)) {
-            if (!sim.sources.can_alloc(1u))
-                return false;
-
-            auto& src_ta = sim.sources.alloc();
-            dyn.default_source_ta = sim.sources.get_id(src_ta);
-
-            if (!read_source(sim, src_ta, index, source_type))
+            if (!read_source(sim, dyn.default_source_ta, index, source_type))
                 return false;
         }
 
@@ -1371,13 +1365,7 @@ private:
 
         external_source_type source_type;
         if (external_source_type_cast(type, &source_type)) {
-            if (!sim.sources.can_alloc(1u))
-                return false;
-
-            auto& src_ta = sim.sources.alloc();
-            dyn.default_source_ta = sim.sources.get_id(src_ta);
-
-            if (!read_source(sim, src_ta, index, source_type))
+            if (!read_source(sim, dyn.default_source_ta, index, source_type))
                 return false;
         }
 
@@ -1395,22 +1383,13 @@ private:
 
         external_source_type source_type;
         if (external_source_type_cast(type[0], &source_type)) {
-            if (!sim.sources.can_alloc(1u))
-                return false;
-
-            auto& src_ta = sim.sources.alloc();
-            dyn.default_source_ta = sim.sources.get_id(src_ta);
-            if (!read_source(sim, src_ta, index[0], source_type))
+            if (!read_source(sim, dyn.default_source_ta, index[0], source_type))
                 return false;
         }
 
         if (external_source_type_cast(type[1], &source_type)) {
-            if (!sim.sources.can_alloc(1u))
-                return false;
-
-            auto& src_value = sim.sources.alloc();
-            dyn.default_source_value = sim.sources.get_id(src_value);
-            if (!read_source(sim, src_value, index[1], source_type))
+            if (!read_source(
+                  sim, dyn.default_source_value, index[1], source_type))
                 return false;
         }
 
@@ -1910,15 +1889,11 @@ private:
         os << "counter\n";
     }
 
-    void write(const simulation& sim, const source_id src_id) noexcept
+    void write(const source& src) noexcept
     {
-        if (const auto* src = sim.sources.try_to_get(src_id); src) {
-            u32 a, b;
-            unpack_doubleword(src->id, &a, &b);
-            os << b << ' ' << src->type;
-        } else {
-            os << "0 -1";
-        }
+        u32 a, b;
+        unpack_doubleword(src.id, &a, &b);
+        os << b << ' ' << src.type;
     }
 
     void write(const simulation& /*sim*/, const queue& dyn) noexcept
@@ -1926,27 +1901,27 @@ private:
         os << "queue " << dyn.default_ta << '\n';
     }
 
-    void write(const simulation& sim, const dynamic_queue& dyn) noexcept
+    void write(const simulation& /*sim*/, const dynamic_queue& dyn) noexcept
     {
         os << "dynamic_queue ";
-        write(sim, dyn.default_source_ta);
+        write(dyn.default_source_ta);
         os << '\n';
     }
 
-    void write(const simulation& sim, const priority_queue& dyn) noexcept
+    void write(const simulation& /*sim*/, const priority_queue& dyn) noexcept
     {
         os << "priority_queue ";
-        write(sim, dyn.default_source_ta);
+        write(dyn.default_source_ta);
         os << '\n';
     }
 
-    void write(const simulation& sim, const generator& dyn) noexcept
+    void write(const simulation& /*sim*/, const generator& dyn) noexcept
     {
         os << "generator " << dyn.default_offset << ' ';
 
-        write(sim, dyn.default_source_ta);
+        write(dyn.default_source_ta);
         os << ' ';
-        write(sim, dyn.default_source_value);
+        write(dyn.default_source_value);
         os << '\n';
     }
 

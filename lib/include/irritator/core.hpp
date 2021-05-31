@@ -312,7 +312,7 @@ enum class status
     vector_init_capacity_zero,
     vector_init_capacity_too_big,
     vector_init_not_enough_memory,
-    source_unknown_id,
+    source_unknown,
     source_empty,
     dynamics_unknown_id,
     dynamics_unknown_port_id,
@@ -2935,8 +2935,6 @@ struct simulation;
  *
  ****************************************************************************/
 
-enum class source_id : u64;
-
 struct source
 {
     enum class operation_type
@@ -2983,13 +2981,13 @@ struct source
 };
 
 inline status
-initialize_source(simulation& sim, source_id id) noexcept;
+initialize_source(simulation& sim, source& src) noexcept;
 
 inline status
-update_source(simulation& sim, source_id id, double& val) noexcept;
+update_source(simulation& sim, source& src, double& val) noexcept;
 
 inline status
-finalize_source(simulation& sim, source_id id) noexcept;
+finalize_source(simulation& sim, source& src) noexcept;
 
 /*****************************************************************************
  *
@@ -5126,28 +5124,23 @@ struct generator
 
     simulation* sim = nullptr;
     double default_offset = 0.0;
-    source_id default_source_ta = undefined<source_id>();
-    source_id default_source_value = undefined<source_id>();
-    source_id source_ta;
-    source_id source_value;
+    source default_source_ta;
+    source default_source_value;
 
     status initialize() noexcept
     {
         sigma = default_offset;
 
-        source_ta = default_source_ta;
-        source_value = default_source_value;
-
-        irt_return_if_bad(initialize_source(*sim, source_ta));
-        irt_return_if_bad(initialize_source(*sim, source_value));
+        irt_return_if_bad(initialize_source(*sim, default_source_ta));
+        irt_return_if_bad(initialize_source(*sim, default_source_value));
 
         return status::success;
     }
 
     status transition(time /*t*/, time /*e*/, time /*r*/) noexcept
     {
-        irt_return_if_bad(update_source(*sim, source_ta, sigma));
-        irt_return_if_bad(update_source(*sim, source_value, value));
+        irt_return_if_bad(update_source(*sim, default_source_ta, sigma));
+        irt_return_if_bad(update_source(*sim, default_source_value, value));
 
         return status::success;
     }
@@ -5762,15 +5755,14 @@ struct dynamic_queue
     flat_double_list<dated_message> queue;
 
     simulation* sim = nullptr;
-    source_id default_source_ta = undefined<source_id>();
-    source_id source_ta;
+    source default_source_ta;
 
     status initialize() noexcept
     {
         sigma = time_domain<time>::infinity;
         queue.clear();
 
-        source_ta = default_source_ta;
+        irt_return_if_bad(initialize_source(*sim, default_source_ta));
 
         return status::success;
     }
@@ -5785,7 +5777,7 @@ struct dynamic_queue
                 irt_bad_return(status::model_dynamic_queue_full);
 
             double ta;
-            irt_return_if_bad(update_source(*sim, source_ta, ta));
+            irt_return_if_bad(update_source(*sim, default_source_ta, ta));
             queue.emplace_back(t + ta, msg[0], msg[1], msg[2], msg[3]);
         }
 
@@ -5824,8 +5816,7 @@ struct priority_queue
     double default_ta = 1.0;
 
     simulation* sim = nullptr;
-    source_id default_source_ta = undefined<source_id>();
-    source_id source_ta;
+    source default_source_ta;
 
 private:
     status try_to_insert(const time t, const message& msg) noexcept
@@ -5857,6 +5848,8 @@ public:
         if (!queue.get_allocator())
             irt_bad_return(status::model_priority_queue_empty_allocator);
 
+        irt_return_if_bad(initialize_source(*sim, default_source_ta));
+
         sigma = time_domain<time>::infinity;
         queue.clear();
 
@@ -5870,7 +5863,7 @@ public:
 
         for (const auto& msg : x[0].messages) {
             double value;
-            irt_return_if_bad(update_source(*sim, source_ta, value));
+            irt_return_if_bad(update_source(*sim, default_source_ta, value));
 
             if (auto ret = try_to_insert(value + t, msg); is_bad(ret))
                 irt_bad_return(status::model_priority_queue_full);
@@ -6265,7 +6258,6 @@ struct simulation
     data_array<model, model_id> models;
     data_array<message, message_id> messages;
     data_array<observer, observer_id> observers;
-    data_array<source, source_id> sources;
 
     scheduller sched;
 
@@ -6693,7 +6685,6 @@ public:
         irt_return_if_bad(models.init(model_capacity));
         irt_return_if_bad(messages.init(messages_capacity));
         irt_return_if_bad(observers.init(model_capacity));
-        irt_return_if_bad(sources.init(model_capacity));
         irt_return_if_bad(
           flat_double_list_shared_allocator.init(model_capacity * ten));
 
@@ -7329,39 +7320,26 @@ public:
 };
 
 inline status
-initialize_source(simulation& sim, source_id id) noexcept
+initialize_source(simulation& sim, source& src) noexcept
 {
-    auto* src = sim.sources.try_to_get(id);
-    if (!src)
-        return status::success;
-
-    return sim.source_dispatch(*src, source::operation_type::initialize);
+    return sim.source_dispatch(src, source::operation_type::initialize);
 }
 
 inline status
-update_source(simulation& sim, source_id id, double& val) noexcept
+update_source(simulation& sim, source& src, double& val) noexcept
 {
-    auto* src = sim.sources.try_to_get(id);
-    if (!src)
+    if (src.next(val))
         return status::success;
 
-    if (src->next(val))
-        return status::success;
+    irt_return_if_bad(sim.source_dispatch(src, source::operation_type::update));
 
-    irt_return_if_bad(
-      sim.source_dispatch(*src, source::operation_type::update));
-
-    return src->next(val) ? status::success : status::source_empty;
+    return src.next(val) ? status::success : status::source_empty;
 }
 
 inline status
-finalize_source(simulation& sim, source_id id) noexcept
+finalize_source(simulation& sim, source& src) noexcept
 {
-    auto* src = sim.sources.try_to_get(id);
-    if (!src)
-        return status::success;
-
-    return sim.source_dispatch(*src, source::operation_type::finalize);
+    return sim.source_dispatch(src, source::operation_type::finalize);
 }
 
 } // namespace irt

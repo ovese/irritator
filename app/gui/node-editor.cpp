@@ -1939,117 +1939,71 @@ show_dynamics_inputs(simulation& /*sim*/, queue& dyn)
 }
 
 static void
-show_dynamics_inputs(simulation& /*sim*/, dynamic_queue& dyn)
-{
-    const char* title = "Select time sources";
-    if (ImGui::Button("Times"))
-        ImGui::OpenPopup(title);
-    ImGui::SameLine();
-
-    // if (dyn.default_ta_source.data == nullptr) {
-    //    ImGui::TextUnformatted("<None>");
-    //} else {
-    //    ImGui::Text("%" PRIu32 "-%" PRIu32,
-    //                dyn.default_ta_source.type,
-    //                dyn.default_ta_source.id);
-    //}
-
-    // app.srcs.show_menu(title, dyn.default_ta_source);
-}
-
-static void
-show_dynamics_inputs(simulation& /*sim*/, priority_queue& dyn)
-{
-    const char* title = "Select time sources";
-    if (ImGui::Button("Times"))
-        ImGui::OpenPopup(title);
-    ImGui::SameLine();
-
-    // if (dyn.default_ta_source.data == nullptr) {
-    //    ImGui::TextUnformatted("<None>");
-    //} else {
-    //    ImGui::Text("%" PRIu32 "-%" PRIu32,
-    //                dyn.default_ta_source.type,
-    //                dyn.default_ta_source.id);
-    //}
-
-    // app.srcs.show_menu(title, dyn.default_ta_source);
-}
-
-static void
-show_external_source(simulation& sim, source& src)
-{
-    if (src.type < 0 || src.type > 3)
-        return;
-
-    const auto type = enum_cast<external_source_type>(src.type);
-    ImGui::TextUnformatted(external_source_str[src.type]);
-}
-
-static void
-show_external_sources_combo(const char* title, simulation& sim, source& src)
+show_external_sources_combo(const char* title, source& src)
 {
     small_string<63> label("None");
 
-    if (src.type < 0 || src.type > 3) {
+    external_source_type type;
+    if (!(external_source_type_cast(src.type, &type))) {
         src.reset();
-    } else {
-        switch (enum_cast<external_source_type>(src.type)) {
-        case external_source_type::binary_file: {
-            const auto id = enum_cast<binary_file_source_id>(src.id);
-            const auto index = get_index(id);
-            if (auto* es = app.srcs.binary_file_sources.try_to_get(id)) {
-                format(label,
-                       "{}-{} {}",
-                       ordinal(external_source_type::binary_file),
-                       index,
-                       es->name.c_str());
-            } else {
-                src.reset();
-            }
-        } break;
-        case external_source_type::constant: {
-            const auto id = enum_cast<constant_source_id>(src.id);
-            const auto index = get_index(id);
-            if (auto* es = app.srcs.constant_sources.try_to_get(id)) {
-                format(label,
-                       "{}-{} {}",
-                       ordinal(external_source_type::constant),
-                       index,
-                       es->name.c_str());
-            } else {
-                src.reset();
-            }
-        } break;
-        case external_source_type::random: {
-            const auto id = enum_cast<random_source_id>(src.id);
-            const auto index = get_index(id);
-            if (auto* es = app.srcs.random_sources.try_to_get(id)) {
-                format(label,
-                       "{}-{} {}",
-                       ordinal(external_source_type::random),
-                       index,
-                       es->name.c_str());
-            } else {
-                src.reset();
-            }
-        } break;
-        case external_source_type::text_file: {
-            const auto id = enum_cast<text_file_source_id>(src.id);
-            const auto index = get_index(id);
-            if (auto* es = app.srcs.text_file_sources.try_to_get(id)) {
-                format(label,
-                       "{}-{} {}",
-                       ordinal(external_source_type::text_file),
-                       index,
-                       es->name.c_str());
-            } else {
-                src.reset();
-            }
-        } break;
-        default:
-            irt_unreachable();
+        return;
+    }
+
+    switch (type) {
+    case external_source_type::binary_file: {
+        const auto id = enum_cast<binary_file_source_id>(src.id);
+        const auto index = get_index(id);
+        if (auto* es = app.srcs.binary_file_sources.try_to_get(id)) {
+            format(label,
+                   "{}-{} {}",
+                   ordinal(external_source_type::binary_file),
+                   index,
+                   es->name.c_str());
+        } else {
+            src.reset();
         }
+    } break;
+    case external_source_type::constant: {
+        const auto id = enum_cast<constant_source_id>(src.id);
+        const auto index = get_index(id);
+        if (auto* es = app.srcs.constant_sources.try_to_get(id)) {
+            format(label,
+                   "{}-{} {}",
+                   ordinal(external_source_type::constant),
+                   index,
+                   es->name.c_str());
+        } else {
+            src.reset();
+        }
+    } break;
+    case external_source_type::random: {
+        const auto id = enum_cast<random_source_id>(src.id);
+        const auto index = get_index(id);
+        if (auto* es = app.srcs.random_sources.try_to_get(id)) {
+            format(label,
+                   "{}-{} {}",
+                   ordinal(external_source_type::random),
+                   index,
+                   es->name.c_str());
+        } else {
+            src.reset();
+        }
+    } break;
+    case external_source_type::text_file: {
+        const auto id = enum_cast<text_file_source_id>(src.id);
+        const auto index = get_index(id);
+        if (auto* es = app.srcs.text_file_sources.try_to_get(id)) {
+            format(label,
+                   "{}-{} {}",
+                   ordinal(external_source_type::text_file),
+                   index,
+                   es->name.c_str());
+        } else {
+            src.reset();
+        }
+    } break;
+    default:
+        irt_unreachable();
     }
 
     if (ImGui::BeginCombo(title, label.c_str())) {
@@ -2161,29 +2115,24 @@ show_external_sources_combo(const char* title, simulation& sim, source& src)
 }
 
 static void
-show_dynamics_inputs(simulation& sim, generator& dyn)
+show_dynamics_inputs(simulation& /*sim*/, dynamic_queue& dyn)
+{
+    show_external_sources_combo("time", dyn.default_source_ta);
+}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, priority_queue& dyn)
+{
+    show_external_sources_combo("time", dyn.default_source_ta);
+}
+
+static void
+show_dynamics_inputs(simulation& /*sim*/, generator& dyn)
 {
     ImGui::InputDouble("offset", &dyn.default_offset);
 
-    auto* src_value = sim.sources.try_to_get(dyn.default_source_value);
-    if (!src_value && sim.sources.can_alloc(1u)) {
-        auto& new_src = sim.sources.alloc();
-        dyn.default_source_value = sim.sources.get_id(new_src);
-        src_value = &new_src;
-    }
-
-    if (src_value)
-        show_external_sources_combo("source", sim, *src_value);
-
-    auto* src_ta = sim.sources.try_to_get(dyn.default_source_ta);
-    if (!src_ta && sim.sources.can_alloc(1u)) {
-        auto& new_src = sim.sources.alloc();
-        dyn.default_source_ta = sim.sources.get_id(new_src);
-        src_ta = &new_src;
-    }
-
-    if (src_ta)
-        show_external_sources_combo("time", sim, *src_ta);
+    show_external_sources_combo("source", dyn.default_source_value);
+    show_external_sources_combo("time", dyn.default_source_ta);
 }
 
 static void

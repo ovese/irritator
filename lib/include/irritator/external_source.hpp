@@ -78,9 +78,9 @@ struct constant_source
             buffer.resize(1, 0.0);
 
         src.buffer = buffer.data();
-        src.size = 1;
+        src.size = static_cast<int>(buffer.size());
         src.index = 0;
-        src.step = 0;
+        src.step = 1;
         src.type = ordinal(external_source_type::constant);
         src.id = 0;
 
@@ -112,7 +112,7 @@ struct binary_file_source
         src.buffer = nullptr;
         src.size = 0;
         src.index = 0;
-        src.step = 0;
+        src.step = 1;
         src.type = ordinal(external_source_type::binary_file);
         src.id = 0;
 
@@ -125,7 +125,7 @@ struct binary_file_source
         src.buffer = nullptr;
         src.size = 0;
         src.index = 0;
-        src.step = 0;
+        src.step = 1;
 
         return status::success;
     }
@@ -458,11 +458,11 @@ struct external_source
 
     status operator()(source& src, const source::operation_type op) noexcept
     {
-        if (src.type < 0 || src.type > 3)
-            return status::success;
+        external_source_type type;
+        if (!external_source_type_cast(src.type, &type))
+            return status::source_unknown;
 
-        const auto src_type = enum_cast<external_source_type>(src.type);
-        switch (src_type) {
+        switch (type) {
         case external_source_type::binary_file: {
             const auto src_id = enum_cast<binary_file_source_id>(src.id);
             if (auto* bin_src = binary_file_sources.try_to_get(src_id);

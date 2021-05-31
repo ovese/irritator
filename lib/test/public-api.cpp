@@ -81,6 +81,21 @@ struct function_ref_class
     }
 };
 
+struct function_ref_multiple_operator
+{
+    int i;
+
+    void operator()(bool)
+    {
+        i = 1;
+    }
+
+    void operator()(double)
+    {
+        i++;
+    }
+};
+
 static void empty_fun(irt::model_id /*id*/) noexcept
 {}
 
@@ -465,6 +480,18 @@ main()
             irt::function_ref<void()> fr = x;
             fr();
             expect(i == 42);
+        }
+
+        {
+            function_ref_multiple_operator ops;
+            ops.i = 0;
+            irt::function_ref<void(bool)> b1(ops);
+            irt::function_ref<void(double)> b2(ops);
+
+            b1(true);
+            b2(0.0);
+
+            expect(ops.i == 2);
         }
     };
 
@@ -1010,7 +1037,7 @@ main()
             irt::reader r(is);
             expect(irt::is_success(r(sim, srcs)));
 
-            expect(sim.models.size() == 49);
+            expect(sim.models.size() == 52);
         }
 
         {
@@ -1024,13 +1051,13 @@ main()
             irt::reader r(is);
             expect(irt::is_success(
               r(sim, srcs, [&i](irt::model_id /*id*/) { ++i; })));
-            expect(i == 49);
+            expect(i == 52);
 
-            expect(sim.models.size() == 49);
+            expect(sim.models.size() == 52);
         }
 
         {
-            std::string string_error{ "1\n0 qss1_integrator A B C\n" };
+            std::string string_error{ "0 0 0 0\n1\n0 qss1_integrator A B C\n" };
             std::istringstream is{ string_error };
             irt::simulation sim;
             irt::external_source srcs;
@@ -1041,8 +1068,8 @@ main()
 
             irt::reader r(is);
             expect(irt::is_bad(r(sim, srcs)));
-            expect(r.line_error() == 2);
-            expect(r.column_error() == 17);
+            expect(r.line_error() == 3);
+            expect(r.column_error() == 18);
             expect(r.model_error == 0);
             expect(r.connection_error == 0);
 
@@ -1122,22 +1149,22 @@ main()
 
         expect(srcs.constant_sources.can_alloc(2u));
         auto& cst_value = srcs.constant_sources.alloc();
-        cst_value.buffer = { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9. };
+        cst_value.buffer = { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10. };
 
         auto& cst_ta = srcs.constant_sources.alloc();
-        cst_ta.buffer = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
-
-        expect(sim.sources.can_alloc(2u));
-        auto& src_value = sim.sources.alloc();
-        auto& src_ta = sim.sources.alloc();
-
-        src_value.id = irt::ordinal(srcs.constant_sources.get_id(cst_value));
-        src_value.type = irt::ordinal(irt::external_source_type::constant);
-        src_ta.id = irt::ordinal(srcs.constant_sources.get_id(cst_ta));
-        src_ta.type = irt::ordinal(irt::external_source_type::constant);
+        cst_ta.buffer = { 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1. };
 
         auto& gen = sim.alloc<irt::generator>();
         auto& cnt = sim.alloc<irt::counter>();
+
+        gen.default_source_value.id =
+          irt::ordinal(srcs.constant_sources.get_id(cst_value));
+        gen.default_source_value.type =
+          irt::ordinal(irt::external_source_type::constant);
+        gen.default_source_ta.id =
+          irt::ordinal(srcs.constant_sources.get_id(cst_ta));
+        gen.default_source_ta.type =
+          irt::ordinal(irt::external_source_type::constant);
 
         expect(sim.connect(gen, 0, cnt, 0) == irt::status::success);
 
@@ -1149,10 +1176,9 @@ main()
         do {
             st = sim.run(t);
             expect(irt::is_success(st));
-            expect(cnt.number <= static_cast<irt::i64>(t));
-        } while (t < sim.end);
+        } while (t < 10.0);
 
-        expect(cnt.number == static_cast<irt::i64>(9));
+        expect(cnt.number == static_cast<irt::i64>(10));
     };
 
     "time_func"_test = [] {
