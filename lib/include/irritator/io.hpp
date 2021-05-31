@@ -700,6 +700,7 @@ private:
         case distribution_type::binomial:
             if (!(is >> elem.t32 >> elem.p))
                 return status::io_file_format_error;
+            break;
 
         case distribution_type::negative_binomial:
             if (!(is >> elem.t32 >> elem.p))
@@ -782,7 +783,7 @@ private:
             if (!srcs.constant_sources.can_alloc(number))
                 return status::io_file_source_full;
 
-            for (int i = 0; i < number; ++i)
+            for (sz i = 0; i < number; ++i)
                 irt_return_if_bad(do_read_constant_source(srcs));
         }
 
@@ -794,7 +795,7 @@ private:
             if (!srcs.binary_file_sources.can_alloc(number))
                 return status::io_file_source_full;
 
-            for (int i = 0; i < number; ++i)
+            for (sz i = 0; i < number; ++i)
                 irt_return_if_bad(do_read_binary_file_source(srcs));
         }
 
@@ -806,7 +807,7 @@ private:
             if (!srcs.text_file_sources.can_alloc(number))
                 return status::io_file_source_full;
 
-            for (int i = 0; i < number; ++i)
+            for (sz i = 0; i < number; ++i)
                 irt_return_if_bad(do_read_text_file_source(srcs));
         }
 
@@ -818,7 +819,7 @@ private:
             if (!srcs.random_sources.can_alloc(number))
                 return status::io_file_source_full;
 
-            for (int i = 0; i < number; ++i) {
+            for (sz i = 0; i < number; ++i) {
                 irt_return_if_bad(do_read_random_source(srcs));
             }
         }
@@ -1270,13 +1271,12 @@ private:
         return !!(is >> dyn.default_ta);
     }
 
-    bool read_source(simulation& sim, source& src, int index, int type)
+    bool read_source(simulation& /*sim*/,
+                     source& src,
+                     int index,
+                     external_source_type type)
     {
-        if (type < 0 || type > 3)
-            return false;
-
-        const auto source_type = enum_cast<external_source_type>(type);
-        switch (source_type) {
+        switch (type) {
         case external_source_type::binary_file: {
             auto it = binary_find(
               binary_file_mapping.begin(),
@@ -1287,7 +1287,7 @@ private:
             if (it == binary_file_mapping.end())
                 return false;
 
-            src.type = type;
+            src.type = ordinal(type);
             src.id = it->value;
             return true;
         };
@@ -1301,7 +1301,7 @@ private:
             if (it == constant_mapping.end())
                 return false;
 
-            src.type = type;
+            src.type = ordinal(type);
             src.id = it->value;
             return true;
         };
@@ -1315,7 +1315,7 @@ private:
             if (it == text_file_mapping.end())
                 return false;
 
-            src.type = type;
+            src.type = ordinal(type);
             src.id = it->value;
             return true;
         };
@@ -1329,7 +1329,7 @@ private:
             if (it == random_mapping.end())
                 return false;
 
-            src.type = type;
+            src.type = ordinal(type);
             src.id = it->value;
             return true;
         };
@@ -1346,14 +1346,17 @@ private:
         if (!(is >> index >> type))
             return false;
 
-        if (!sim.sources.can_alloc(1u))
-            return false;
+        external_source_type source_type;
+        if (external_source_type_cast(type, &source_type)) {
+            if (!sim.sources.can_alloc(1u))
+                return false;
 
-        auto& src_ta = sim.sources.alloc();
-        dyn.default_source_ta = sim.sources.get_id(src_ta);
+            auto& src_ta = sim.sources.alloc();
+            dyn.default_source_ta = sim.sources.get_id(src_ta);
 
-        if (!read_source(sim, src_ta, index, type))
-            return false;
+            if (!read_source(sim, src_ta, index, source_type))
+                return false;
+        }
 
         return true;
     }
@@ -1366,14 +1369,17 @@ private:
         if (!(is >> index >> type))
             return false;
 
-        if (!sim.sources.can_alloc(1u))
-            return false;
+        external_source_type source_type;
+        if (external_source_type_cast(type, &source_type)) {
+            if (!sim.sources.can_alloc(1u))
+                return false;
 
-        auto& src_ta = sim.sources.alloc();
-        dyn.default_source_ta = sim.sources.get_id(src_ta);
+            auto& src_ta = sim.sources.alloc();
+            dyn.default_source_ta = sim.sources.get_id(src_ta);
 
-        if (!read_source(sim, src_ta, index, type))
-            return false;
+            if (!read_source(sim, src_ta, index, source_type))
+                return false;
+        }
 
         return true;
     }
@@ -1387,19 +1393,26 @@ private:
               type[1]))
             return false;
 
-        if (!sim.sources.can_alloc(2u))
-            return false;
+        external_source_type source_type;
+        if (external_source_type_cast(type[0], &source_type)) {
+            if (!sim.sources.can_alloc(1u))
+                return false;
 
-        auto& src_ta = sim.sources.alloc();
-        auto& src_value = sim.sources.alloc();
-        dyn.default_source_ta = sim.sources.get_id(src_ta);
-        dyn.default_source_value = sim.sources.get_id(src_value);
+            auto& src_ta = sim.sources.alloc();
+            dyn.default_source_ta = sim.sources.get_id(src_ta);
+            if (!read_source(sim, src_ta, index[0], source_type))
+                return false;
+        }
 
-        if (!read_source(sim, src_ta, index[0], type[0]))
-            return false;
+        if (external_source_type_cast(type[1], &source_type)) {
+            if (!sim.sources.can_alloc(1u))
+                return false;
 
-        if (!read_source(sim, src_value, index[1], type[1]))
-            return false;
+            auto& src_value = sim.sources.alloc();
+            dyn.default_source_value = sim.sources.get_id(src_value);
+            if (!read_source(sim, src_value, index[1], source_type))
+                return false;
+        }
 
         return true;
     }
@@ -1624,6 +1637,7 @@ private:
 
         case distribution_type::binomial:
             os << src.t32 << ' ' << src.p;
+            break;
 
         case distribution_type::negative_binomial:
             os << src.t32 << ' ' << src.p;
@@ -1896,6 +1910,17 @@ private:
         os << "counter\n";
     }
 
+    void write(const simulation& sim, const source_id src_id) noexcept
+    {
+        if (const auto* src = sim.sources.try_to_get(src_id); src) {
+            u32 a, b;
+            unpack_doubleword(src->id, &a, &b);
+            os << b << ' ' << src->type;
+        } else {
+            os << "0 -1";
+        }
+    }
+
     void write(const simulation& /*sim*/, const queue& dyn) noexcept
     {
         os << "queue " << dyn.default_ta << '\n';
@@ -1904,30 +1929,14 @@ private:
     void write(const simulation& sim, const dynamic_queue& dyn) noexcept
     {
         os << "dynamic_queue ";
-
-        if (const auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
-            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
-            const int index = static_cast<int>(index32);
-            os << index << ' ' << src->type;
-        } else {
-            os << "0 0";
-        }
-
+        write(sim, dyn.default_source_ta);
         os << '\n';
     }
 
     void write(const simulation& sim, const priority_queue& dyn) noexcept
     {
         os << "priority_queue ";
-
-        if (const auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
-            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
-            const int index = static_cast<int>(index32);
-            os << index << ' ' << src->type;
-        } else {
-            os << "0 0";
-        }
-
+        write(sim, dyn.default_source_ta);
         os << '\n';
     }
 
@@ -1935,24 +1944,9 @@ private:
     {
         os << "generator " << dyn.default_offset << ' ';
 
-        if (const auto* src = sim.sources.try_to_get(dyn.default_source_ta); src) {
-            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
-            const int index = static_cast<int>(index32);
-            os << index << ' ' << src->type;
-        } else {
-            os << "0 0";
-        }
-
+        write(sim, dyn.default_source_ta);
         os << ' ';
-
-        if (const auto* src = sim.sources.try_to_get(dyn.default_source_value); src) {
-            const u32 index32 = static_cast<u32>(src->id & 0x00000000ffffffff);
-            const int index = static_cast<int>(index32);
-            os << index << ' ' << src->type;
-        } else {
-            os << "0 0";
-        }
-
+        write(sim, dyn.default_source_value);
         os << '\n';
     }
 

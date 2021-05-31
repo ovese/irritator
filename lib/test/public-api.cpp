@@ -979,6 +979,9 @@ main()
             sim.alloc<irt::mult_3>();
             sim.alloc<irt::mult_4>();
             sim.alloc<irt::counter>();
+            sim.alloc<irt::queue>();
+            sim.alloc<irt::dynamic_queue>();
+            sim.alloc<irt::priority_queue>();
             sim.alloc<irt::generator>();
             sim.alloc<irt::constant>();
             sim.alloc<irt::cross>();
@@ -1002,6 +1005,7 @@ main()
             irt::simulation sim;
             irt::external_source srcs;
             expect(irt::is_success(sim.init(64lu, 32lu)));
+            expect(irt::is_success(srcs.init(64u)));
 
             irt::reader r(is);
             expect(irt::is_success(r(sim, srcs)));
@@ -1018,8 +1022,8 @@ main()
             expect(irt::is_success(sim.init(64lu, 32lu)));
 
             irt::reader r(is);
-            expect(
-              irt::is_success(r(sim, srcs, [&i](irt::model_id /*id*/) { ++i; })));
+            expect(irt::is_success(
+              r(sim, srcs, [&i](irt::model_id /*id*/) { ++i; })));
             expect(i == 49);
 
             expect(sim.models.size() == 49);

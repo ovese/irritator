@@ -130,6 +130,45 @@ using u32 = uint32_t;
 using u64 = uint64_t;
 using sz = size_t;
 
+inline u16
+make_halfword(u8 a, u8 b) noexcept
+{
+    return static_cast<u16>((a << 8) | b);
+}
+
+inline void
+unpack_halfword(u16 halfword, u8* a, u8* b) noexcept
+{
+    *a = static_cast<u8>((halfword >> 8) & 0xff);
+    *b = static_cast<u8>(halfword & 0xff);
+}
+
+inline u32
+make_word(u16 a, u16 b) noexcept
+{
+    return (static_cast<u32>(a) << 16) | static_cast<u32>(b);
+}
+
+inline void
+unpack_word(u32 word, u16* a, u16* b) noexcept
+{
+    *a = static_cast<u16>((word >> 16) & 0xffff);
+    *b = static_cast<u16>(word & 0xffff);
+}
+
+inline u64
+make_doubleword(u32 a, u32 b) noexcept
+{
+    return (static_cast<u64>(a) << 32) | static_cast<u64>(b);
+}
+
+inline void
+unpack_doubleword(u64 doubleword, u32* a, u32* b) noexcept
+{
+    *a = static_cast<u32>((doubleword >> 32) & 0xffffffff);
+    *b = static_cast<u32>(doubleword & 0xffffffff);
+}
+
 template<typename Integer>
 constexpr typename std::make_unsigned<Integer>::type
 to_unsigned(Integer value)
@@ -2908,8 +2947,8 @@ struct source
     };
 
     double* buffer = nullptr;
-    u64 id = 0;   // The identifier of the external source (see operation())
-    int type = 0; // The type of the external source (see operation())
+    u64 id = 0;    // The identifier of the external source (see operation())
+    int type = -1; // The type of the external source (see operation())
     int size = 0;
     int index = 0;
     int step = 1;
@@ -2920,8 +2959,15 @@ struct source
         size = 0;
         index = 0;
         step = 1;
-        type = 0;
+        type = -1;
         id = 0;
+    }
+
+    void clear() noexcept
+    {
+        buffer = nullptr;
+        size = 0;
+        index = 0;
     }
 
     bool next(double& value) noexcept
@@ -2937,7 +2983,13 @@ struct source
 };
 
 inline status
-get_next_data(simulation& sim, source_id id, double& val) noexcept;
+initialize_source(simulation& sim, source_id id) noexcept;
+
+inline status
+update_source(simulation& sim, source_id id, double& val) noexcept;
+
+inline status
+finalize_source(simulation& sim, source_id id) noexcept;
 
 /*****************************************************************************
  *
@@ -5082,16 +5134,20 @@ struct generator
     status initialize() noexcept
     {
         sigma = default_offset;
+
         source_ta = default_source_ta;
         source_value = default_source_value;
+
+        irt_return_if_bad(initialize_source(*sim, source_ta));
+        irt_return_if_bad(initialize_source(*sim, source_value));
 
         return status::success;
     }
 
     status transition(time /*t*/, time /*e*/, time /*r*/) noexcept
     {
-        irt_return_if_bad(get_next_data(*sim, source_ta, sigma));
-        irt_return_if_bad(get_next_data(*sim, source_value, value));
+        irt_return_if_bad(update_source(*sim, source_ta, sigma));
+        irt_return_if_bad(update_source(*sim, source_value, value));
 
         return status::success;
     }
@@ -5729,7 +5785,7 @@ struct dynamic_queue
                 irt_bad_return(status::model_dynamic_queue_full);
 
             double ta;
-            irt_return_if_bad(get_next_data(*sim, source_ta, ta));
+            irt_return_if_bad(update_source(*sim, source_ta, ta));
             queue.emplace_back(t + ta, msg[0], msg[1], msg[2], msg[3]);
         }
 
@@ -5814,7 +5870,7 @@ public:
 
         for (const auto& msg : x[0].messages) {
             double value;
-            irt_return_if_bad(get_next_data(*sim, source_ta, value));
+            irt_return_if_bad(update_source(*sim, source_ta, value));
 
             if (auto ret = try_to_insert(value + t, msg); is_bad(ret))
                 irt_bad_return(status::model_priority_queue_full);
@@ -7153,6 +7209,11 @@ public:
                       std::is_same_v<Dynamics, priority_queue>)
             dyn.queue.set_allocator(&dated_message_allocator);
 
+        if constexpr (std::is_same_v<Dynamics, generator> ||
+                      std::is_same_v<Dynamics, dynamic_queue> ||
+                      std::is_same_v<Dynamics, priority_queue>)
+            dyn.sim = this;
+
         if constexpr (is_detected_v<initialize_function_t, Dynamics>)
             irt_return_if_bad(dyn.initialize());
 
@@ -7268,10 +7329,21 @@ public:
 };
 
 inline status
-get_next_data(simulation& sim, source_id id, double& val) noexcept
+initialize_source(simulation& sim, source_id id) noexcept
 {
     auto* src = sim.sources.try_to_get(id);
-    irt_return_if_fail(src, status::source_unknown_id);
+    if (!src)
+        return status::success;
+
+    return sim.source_dispatch(*src, source::operation_type::initialize);
+}
+
+inline status
+update_source(simulation& sim, source_id id, double& val) noexcept
+{
+    auto* src = sim.sources.try_to_get(id);
+    if (!src)
+        return status::success;
 
     if (src->next(val))
         return status::success;
@@ -7280,6 +7352,16 @@ get_next_data(simulation& sim, source_id id, double& val) noexcept
       sim.source_dispatch(*src, source::operation_type::update));
 
     return src->next(val) ? status::success : status::source_empty;
+}
+
+inline status
+finalize_source(simulation& sim, source_id id) noexcept
+{
+    auto* src = sim.sources.try_to_get(id);
+    if (!src)
+        return status::success;
+
+    return sim.source_dispatch(*src, source::operation_type::finalize);
 }
 
 } // namespace irt

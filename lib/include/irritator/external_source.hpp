@@ -24,6 +24,16 @@ enum class external_source_type
     text_file
 };
 
+inline bool
+external_source_type_cast(int value, external_source_type* type) noexcept
+{
+    if (value < 0 || value > 3)
+        return false;
+
+    *type = enum_cast<external_source_type>(value);
+    return true;
+}
+
 static inline const char* external_source_str[] = { "binary_file",
                                                     "constant",
                                                     "random",
