@@ -24,6 +24,108 @@ enum class external_source_type
     text_file
 };
 
+enum class block_vector_policy
+{
+    not_reuse_free_list,
+    reuse_free_list
+};
+
+template<block_vector_policy P>
+struct block_vector_base
+{
+    double* buffer;
+    sz size;
+    sz max_size;
+    sz capacity;
+    sz block_size;
+    sz free_head = static_cast<sz>(-1);
+
+    block_vector_base() = default;
+
+    block_vector_base(const block_vector_base&) = delete;
+    block_vector_base& operator=(const block_vector_base&) = delete;
+
+    ~block_vector_base() noexcept
+    {
+        if (buffer)
+            g_free_fn(buffer);
+    }
+
+    status init(sz block_size_, sz capacity_) noexcept
+    {
+        if (capacity_ == 0)
+            return status::block_allocator_bad_capacity;
+
+        if (capacity_ != capacity) {
+            if (buffer)
+                g_free_fn(buffer);
+
+            buffer = static_cast<block*>(g_alloc_fn(capacity_ * block_size_));
+            if (buffer == nullptr)
+                return status::block_allocator_not_enough_memory;
+        }
+
+        size = 0;
+        max_size = 0;
+        capacity = capacity_;
+        block_size = block_size_;
+        free_head = static_cast<sz>(-1);
+
+        return status::success;
+    }
+
+    bool can_alloc() const noexcept
+    {
+        if constexpr (P == block_vector_policy::reuse_free_list)
+            return free_head != static_cast<sz>(-1) || max_size < capacity;
+        else
+            return max_size < capacity;
+    }
+
+    double* alloc() noexcept
+    {
+        sz new_block;
+
+        if constexpr (P == block_vector_policy::reuse_free_list) {
+            if (free_head != static_cast<sz>(-1)) {
+                new_block = free_head;
+                free_head = static_cast<sz>(blocks[free_head * block_size]);
+            } else {
+                new_block = max_size * block_size;
+                ++max_size;
+            }
+        } else {
+            new_block = max_size * block_size;
+            ++max_size;
+        }
+
+        ++size;
+        return &blocks[new_block];
+    }
+
+    void free([[maybe_unused]] double* block) noexcept
+    {
+        if constexpr (P == block_vector_policy::reuse_free_list) {
+            auto ptr_diff = blocks - block;
+            auto block_index = ptr_diff / block_size;
+
+            block[0] = static_cast<double>(free_head);
+            free_head = static_cast<sz>(block_index);
+            --size;
+
+            if (size == 0) {
+                max_size = 0;
+                free_head = static_cast<sz>(-1);
+            }
+        }
+    }
+};
+
+using fixed_block_vector =
+  block_vector_base<block_vector_policy::not_reuse_free_list>;
+using block_vector_reuse =
+  block_vector_base<block_vector_policy::reuse_free_list>;
+
 inline bool
 external_source_type_cast(int value, external_source_type* type) noexcept
 {
@@ -70,15 +172,18 @@ static inline const char* distribution_type_str[] = {
 struct constant_source
 {
     small_string<23> name;
-    std::vector<double> buffer;
+    fixed_block_vector buffer;
 
-    status operator()(source& src, source::operation_type /*op*/) noexcept
+    status init(source& src) noexcept
     {
-        if (buffer.empty())
-            buffer.resize(1, 0.0);
+        if (!buffer.can_alloc())
+            return status::source_empty;
 
-        src.buffer = buffer.data();
-        src.size = static_cast<int>(buffer.size());
+        if (src.buffer)
+            buffer.free(src.buffer);
+
+        src.buffer = buffer.alloc();
+        src.size = buffer.block_size();
         src.index = 0;
         src.step = 1;
         src.type = ordinal(external_source_type::constant);
@@ -86,12 +191,52 @@ struct constant_source
 
         return status::success;
     }
+
+    status update(source& src) noexcept
+    {
+        if (!buffer.can_alloc())
+            return status::source_empty;
+
+        if (src.buffer)
+            buffer.free(src.buffer);
+
+        src.buffer = buffer.alloc();
+        src.size = buffer.block_size();
+        src.index = 0;
+        src.step = 1;
+        src.type = ordinal(external_source_type::constant);
+        src.id = 0;
+
+        return status::success;
+    }
+
+    status finalize(source& src) noexcept
+    {
+        if (src.buffer)
+            buffer.free(src.buffer);
+
+        buffer = nullptr;
+
+        return status::success;
+    }
+
+    status operator()(source& src, source::operation_type /*op*/) noexcept
+    {
+        switch (op) {
+        case source::operation_type::initialize:
+            return init(src);
+        case source::operation_type::update:
+            return update(src);
+        case source::operation_type::finalize:
+            return finalize(src);
+        }
+    }
 };
 
 struct binary_file_source
 {
     small_string<23> name;
-    std::vector<double> buffer;
+    block_vector buffer;
     std::filesystem::path file_path;
     std::ifstream ifs;
     sz buffer_index = 0;
@@ -182,7 +327,7 @@ private:
 struct text_file_source
 {
     small_string<23> name;
-    std::vector<double> buffer;
+    block_vector buffer;
     std::filesystem::path file_path;
     std::ifstream ifs;
     sz buffer_size = 0;
@@ -277,7 +422,7 @@ private:
 struct random_source
 {
     small_string<23> name;
-    std::vector<double> buffer;
+    block_vector buffer;
     sz buffer_size = 0;
     sz buffer_index = 0;
     distribution_type distribution = distribution_type::uniform_int;
