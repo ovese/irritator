@@ -571,24 +571,25 @@ private:
     status do_read_binary_file_source(external_source& srcs) noexcept
     {
         u32 id;
-        sz size;
 
         if (!(is >> id))
             return status::io_file_format_error;
 
         auto& elem = srcs.binary_file_sources.alloc();
+        if (auto ret = elem.init(srcs.block_size, srcs.block_number);
+            is_bad(ret)) {
+            srcs.binary_file_sources.free(elem);
+            return ret;
+        }
+
         auto elem_id = srcs.binary_file_sources.get_id(elem);
 
-        try {
-            std::string file_path;
-            if (!(is >> std::quoted(file_path) >> size))
-                return status::io_file_format_error;
-            elem.buffer.resize(size, 0.0);
-            elem.file_path = file_path;
-            binary_file_mapping.emplace_back(id, ordinal(elem_id));
-        } catch (const std::bad_alloc& /*e*/) {
-            return status::io_not_enough_memory;
-        }
+        std::string file_path;
+        if (!(is >> std::quoted(file_path)))
+            return status::io_file_format_error;
+
+        elem.file_path = file_path;
+        binary_file_mapping.emplace_back(id, ordinal(elem_id));
 
         return status::success;
     }
@@ -596,24 +597,25 @@ private:
     status do_read_text_file_source(external_source& srcs) noexcept
     {
         u32 id;
-        sz size;
 
         if (!(is >> id))
             return status::io_file_format_error;
 
         auto& elem = srcs.text_file_sources.alloc();
+        if (auto ret = elem.init(srcs.block_size, srcs.block_number);
+            is_bad(ret)) {
+            srcs.text_file_sources.free(elem);
+            return ret;
+        }
+
         auto elem_id = srcs.text_file_sources.get_id(elem);
 
-        try {
-            std::string file_path;
-            if (!(is >> std::quoted(file_path) >> size))
-                return status::io_file_format_error;
-            elem.buffer.resize(size, 0.0);
-            elem.file_path = file_path;
-            text_file_mapping.emplace_back(id, ordinal(elem_id));
-        } catch (const std::bad_alloc& /*e*/) {
-            return status::io_not_enough_memory;
-        }
+        std::string file_path;
+        if (!(is >> std::quoted(file_path)))
+            return status::io_file_format_error;
+
+        elem.file_path = file_path;
+        text_file_mapping.emplace_back(id, ordinal(elem_id));
 
         return status::success;
     }
@@ -627,17 +629,23 @@ private:
             return status::io_file_format_error;
 
         auto& cst = srcs.constant_sources.alloc();
+        if (auto ret = cst.init(srcs.block_size, srcs.block_number);
+            is_bad(ret)) {
+            srcs.constant_sources.free(cst);
+            return ret;
+        }
+
         auto cst_id = srcs.constant_sources.get_id(cst);
 
         try {
-            cst.buffer.resize(size, 0.0);
+            cst.size = size;
             constant_mapping.emplace_back(id, ordinal(cst_id));
         } catch (const std::bad_alloc& /*e*/) {
             return status::io_not_enough_memory;
         }
 
         for (size_t i = 0; i < size; ++i) {
-            if (!(is >> cst.buffer[i]))
+            if (!(is >> cst.buffer.buffer[i]))
                 return status::io_file_format_error;
         }
 
@@ -647,9 +655,8 @@ private:
     status do_read_random_source(external_source& srcs) noexcept
     {
         u32 id;
-        sz size;
 
-        if (!(is >> id >> size))
+        if (!(is >> id))
             return status::io_file_format_error;
 
         char type_str[30];
@@ -670,10 +677,15 @@ private:
           std::distance(std::begin(distribution_type_str), it);
 
         auto& elem = srcs.random_sources.alloc();
+        if (auto ret = elem.init(srcs.block_size, srcs.block_number);
+            is_bad(ret)) {
+            srcs.random_sources.free(elem);
+            return ret;
+        }
+
         auto elem_id = srcs.random_sources.get_id(elem);
 
         try {
-            elem.buffer.resize(size, 0.0);
             random_mapping.emplace_back(id, ordinal(elem_id));
         } catch (const std::bad_alloc& /*e*/) {
             return status::io_not_enough_memory;
@@ -1494,10 +1506,10 @@ struct writer
             while (srcs.constant_sources.next(src)) {
                 const auto id = srcs.constant_sources.get_id(src);
                 const auto index = get_index(id);
-                os << index << ' ' << src->buffer.size() << ' ';
+                os << index << ' ' << src->size << ' ';
 
-                for (auto elem : src->buffer)
-                    os << elem << ' ';
+                for (sz i = 0; i < src->size; ++i)
+                    os << src->buffer.buffer[i];
 
                 os << '\n';
             }
@@ -1510,8 +1522,8 @@ struct writer
                 const auto id = srcs.binary_file_sources.get_id(src);
                 const auto index = get_index(id);
 
-                os << index << ' ' << src->buffer.size() << ' '
-                   << std::quoted(src->file_path.string()) << '\n';
+                os << index << ' ' << std::quoted(src->file_path.string())
+                   << '\n';
             }
         }
 
@@ -1522,8 +1534,8 @@ struct writer
                 const auto id = srcs.text_file_sources.get_id(src);
                 const auto index = get_index(id);
 
-                os << index << ' ' << src->buffer.size() << ' '
-                   << std::quoted(src->file_path.string()) << '\n';
+                os << index << ' ' << std::quoted(src->file_path.string())
+                   << '\n';
             }
         }
 
@@ -1534,7 +1546,7 @@ struct writer
                 const auto id = srcs.random_sources.get_id(src);
                 const auto index = get_index(id);
 
-                os << index << ' ' << src->buffer.size() << ' '
+                os << index << ' '
                    << distribution_type_str[ordinal(src->distribution)];
 
                 write(*src);

@@ -2949,14 +2949,12 @@ struct source
     int type = -1; // The type of the external source (see operation())
     int size = 0;
     int index = 0;
-    int step = 1;
 
     void reset() noexcept
     {
         buffer = nullptr;
         size = 0;
         index = 0;
-        step = 1;
         type = -1;
         id = 0;
     }
@@ -2973,8 +2971,7 @@ struct source
         if (index >= size)
             return false;
 
-        value = buffer[index];
-        index += step;
+        value = buffer[index++];
 
         return true;
     }

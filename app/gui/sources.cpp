@@ -338,22 +338,22 @@ show_random_distribution_input(random_source& src) noexcept
             ImGui::TextUnformatted(
               external_source_str[ordinal(external_source_type::constant)]);
             ImGui::TableNextColumn();
-            ImGui::Text("%" PRIu64, cst_src->buffer.size());
+            ImGui::Text("%" PRIu64, cst_src->buffer.size);
             ImGui::TableNextColumn();
             if (cst_src->buffer.empty()) {
                 ImGui::TextUnformatted("-");
             } else {
-                size_t min = std::min(std::size(cst_src->buffer), size_t(3));
+                size_t min = std::min(cst_src->buffer.size, size_t(3));
                 if (min == 1u)
-                    ImGui::Text("%f", cst_src->buffer[0]);
+                    ImGui::Text("%f", cst_src->buffer.buffer[0]);
                 else if (min == 2u)
                     ImGui::Text(
-                      "%f %f", cst_src->buffer[0], cst_src->buffer[1]);
+                      "%f %f", cst_src->buffer.buffer[0], cst_src->buffer.buffer[1]);
                 else
                     ImGui::Text("%f %f %f",
-                                cst_src->buffer[0],
-                                cst_src->buffer[1],
-                                cst_src->buffer[2]);
+                                cst_src->buffer.buffer[0],
+                                cst_src->buffer.buffer[1],
+                                cst_src->buffer.buffer[2]);
             }
         }
 
@@ -383,7 +383,7 @@ show_random_distribution_input(random_source& src) noexcept
             ImGui::TextUnformatted(
               external_source_str[ordinal(external_source_type::text_file)]);
             ImGui::TableNextColumn();
-            ImGui::Text("%" PRIu64, txt_src->buffer.size());
+            ImGui::Text("%" PRIu64, txt_src->buffer.size);
             ImGui::TableNextColumn();
             ImGui::Text("%s", txt_src->file_path.string().c_str());
         }
@@ -415,7 +415,7 @@ show_random_distribution_input(random_source& src) noexcept
             ImGui::TextUnformatted(
               external_source_str[ordinal(external_source_type::binary_file)]);
             ImGui::TableNextColumn();
-            ImGui::Text("%" PRIu64, bin_src->buffer.size());
+            ImGui::Text("%" PRIu64, bin_src->buffer.size);
             ImGui::TableNextColumn();
             ImGui::Text("%s", bin_src->file_path.string().c_str());
         }
@@ -445,7 +445,7 @@ show_random_distribution_input(random_source& src) noexcept
             ImGui::TextUnformatted(
               external_source_str[ordinal(external_source_type::random)]);
             ImGui::TableNextColumn();
-            ImGui::Text("%" PRIu64, rnd_src->buffer.size());
+            ImGui::Text("%" PRIu64, rnd_src->buffer.size);
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(
               distribution_type_str[ordinal(rnd_src->distribution)]);
@@ -461,28 +461,43 @@ show_random_distribution_input(random_source& src) noexcept
         if (ImGui::Button("+constant", button_sz)) {
             if (srcs.constant_sources.can_alloc(1u)) {
                 auto& new_src = srcs.constant_sources.alloc();
-                new_src.buffer.resize(1u);
+                if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
+                    // TODO log
+                    srcs.constant_sources.free(new_src);
+                }
             }
         }
 
         ImGui::SameLine();
         if (ImGui::Button("+text file", button_sz)) {
             if (srcs.text_file_sources.can_alloc(1u)) {
-                srcs.text_file_sources.alloc();
+                auto& new_src = srcs.text_file_sources.alloc();
+                if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
+                    // TODO log
+                    srcs.text_file_sources.free(new_src);
+                }
             }
         }
 
         ImGui::SameLine();
         if (ImGui::Button("+binary file", button_sz)) {
             if (srcs.binary_file_sources.can_alloc(1u)) {
-                srcs.binary_file_sources.alloc();
+                auto& new_src = srcs.binary_file_sources.alloc();
+                if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
+                    // TODO log
+                    srcs.binary_file_sources.free(new_src);
+                }
             }
         }
 
         ImGui::SameLine();
         if (ImGui::Button("+random", button_sz)) {
             if (srcs.random_sources.can_alloc(1u)) {
-                srcs.random_sources.alloc();
+                auto& new_src = srcs.random_sources.alloc();
+                if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
+                    // TODO log
+                    srcs.random_sources.free(new_src);
+                }
             }
         }
 
@@ -511,11 +526,9 @@ show_random_distribution_input(random_source& src) noexcept
         if (constant_ptr) {
             const auto id = srcs.constant_sources.get_id(constant_ptr);
             auto index = get_index(id);
-            if (constant_ptr->buffer.empty())
-                constant_ptr->buffer.resize(1u, 0.0);
 
             static u32 new_size = 1;
-            new_size = (u32)constant_ptr->buffer.size();
+            new_size = (u32)constant_ptr->buffer.size;
 
             ImGui::InputScalar("id",
                                ImGuiDataType_U32,
@@ -530,14 +543,12 @@ show_random_distribution_input(random_source& src) noexcept
                              constant_ptr->name.capacity());
 
             if (ImGui::InputScalar("length", ImGuiDataType_U32, &new_size) &&
-                new_size != constant_ptr->buffer.size()) {
-                new_size = std::clamp(new_size, 1u, 32u);
-                constant_ptr->buffer.resize(new_size);
+                new_size != constant_ptr->buffer.size) {
             }
 
             for (u32 i = 0; i < new_size; ++i) {
                 ImGui::PushID(static_cast<int>(i));
-                ImGui::InputDouble("##name", &constant_ptr->buffer[i]);
+                ImGui::InputDouble("##name", &constant_ptr->buffer.buffer[i]);
                 ImGui::PopID();
             }
         }
@@ -545,11 +556,6 @@ show_random_distribution_input(random_source& src) noexcept
         if (text_file_ptr) {
             const auto id = srcs.text_file_sources.get_id(text_file_ptr);
             auto index = get_index(id);
-            if (text_file_ptr->buffer.empty())
-                text_file_ptr->buffer.resize(1u, 0.0);
-
-            static u32 new_size = 1;
-            new_size = (u32)text_file_ptr->buffer.size();
 
             ImGui::InputScalar("id",
                                ImGuiDataType_U32,
@@ -563,12 +569,6 @@ show_random_distribution_input(random_source& src) noexcept
                              text_file_ptr->name.begin(),
                              text_file_ptr->name.capacity());
 
-            if (ImGui::InputScalar("length", ImGuiDataType_U32, &new_size) &&
-                new_size != text_file_ptr->buffer.size()) {
-                new_size = std::clamp(new_size, 512u, 1024u * 1024u * 8u);
-                text_file_ptr->buffer.resize(new_size);
-            }
-
             ImGui::Text("%s", text_file_ptr->file_path.string().c_str());
             if (ImGui::Button("...")) {
                 show_file_dialog = true;
@@ -578,11 +578,6 @@ show_random_distribution_input(random_source& src) noexcept
         if (binary_file_ptr) {
             const auto id = srcs.binary_file_sources.get_id(binary_file_ptr);
             auto index = get_index(id);
-            if (binary_file_ptr->buffer.empty())
-                binary_file_ptr->buffer.resize(1u, 0.0);
-
-            static u32 new_size = 1;
-            new_size = (u32)binary_file_ptr->buffer.size();
 
             ImGui::InputScalar("id",
                                ImGuiDataType_U32,
@@ -596,12 +591,6 @@ show_random_distribution_input(random_source& src) noexcept
                              binary_file_ptr->name.begin(),
                              binary_file_ptr->name.capacity());
 
-            if (ImGui::InputScalar("length", ImGuiDataType_U32, &new_size) &&
-                new_size != binary_file_ptr->buffer.size()) {
-                new_size = std::clamp(new_size, 512u, 1024u * 1024u * 8u);
-                binary_file_ptr->buffer.resize(new_size);
-            }
-
             ImGui::Text("%s", binary_file_ptr->file_path.string().c_str());
             if (ImGui::Button("...")) {
                 show_file_dialog = true;
@@ -611,11 +600,6 @@ show_random_distribution_input(random_source& src) noexcept
         if (random_source_ptr) {
             const auto id = srcs.random_sources.get_id(random_source_ptr);
             auto index = get_index(id);
-            if (random_source_ptr->buffer.empty())
-                random_source_ptr->buffer.resize(1u, 0.0);
-
-            static u32 new_size = 1;
-            new_size = (u32)random_source_ptr->buffer.size();
 
             ImGui::InputScalar("id",
                                ImGuiDataType_U32,
@@ -628,12 +612,6 @@ show_random_distribution_input(random_source& src) noexcept
             ImGui::InputText("name",
                              random_source_ptr->name.begin(),
                              random_source_ptr->name.capacity());
-
-            if (ImGui::InputScalar("length", ImGuiDataType_U32, &new_size) &&
-                new_size != random_source_ptr->buffer.size()) {
-                new_size = std::clamp(new_size, 512u, 1024u * 1024u * 8u);
-                random_source_ptr->buffer.resize(new_size);
-            }
 
             show_random_distribution_input(*random_source_ptr);
         }

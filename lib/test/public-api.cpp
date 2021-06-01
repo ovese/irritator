@@ -1149,10 +1149,15 @@ main()
 
         expect(srcs.constant_sources.can_alloc(2u));
         auto& cst_value = srcs.constant_sources.alloc();
-        cst_value.buffer = { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10. };
+        expect(is_success(cst_value.init(20, 1)));
+
+        for (int i =0 ; i <= 10; ++i)
+            cst_value.buffer.buffer[i] = static_cast<double>(i);
 
         auto& cst_ta = srcs.constant_sources.alloc();
-        cst_ta.buffer = { 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1. };
+        expect(is_success(cst_ta.init(20, 1)));
+
+        std::fill_n(cst_ta.buffer.buffer, 20, 1.0);
 
         auto& gen = sim.alloc<irt::generator>();
         auto& cnt = sim.alloc<irt::counter>();
