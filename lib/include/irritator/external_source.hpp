@@ -176,24 +176,25 @@ static inline const char* distribution_type_str[] = {
 struct constant_source
 {
     small_string<23> name;
-    limited_block_vector buffer;
-    sz size = 0;
+    std::vector<double> buffer;
 
-    status init(sz block_size, sz capacity) noexcept
+    status init(sz block_size) noexcept
     {
-        return buffer.init(block_size, capacity);
+        try {
+            buffer.reserve(block_size);
+            return status::success;
+        } catch (const std::bad_alloc& /*e*/) {
+            return status::gui_not_enough_memory;
+        }
     }
+
+    status start_or_restart() noexcept
+    {}
 
     status update(source& src) noexcept
     {
-        if (!buffer.can_alloc())
-            return status::source_empty;
-
-        if (src.buffer)
-            buffer.free(src.buffer);
-
-        src.buffer = buffer.alloc();
-        src.size = static_cast<int>(buffer.block_size);
+        src.buffer = buffer.data();
+        src.size = static_cast<int>(buffer.size());
         src.index = 0;
 
         return status::success;
@@ -201,9 +202,6 @@ struct constant_source
 
     status finalize(source& src) noexcept
     {
-        if (src.buffer)
-            buffer.free(src.buffer);
-
         src.clear();
 
         return status::success;
@@ -230,14 +228,16 @@ struct binary_file_source
     limited_block_vector buffer;
     std::filesystem::path file_path;
     std::ifstream ifs;
+    sz size = 0; // Number of double read
 
     status init(sz block_size, sz capacity) noexcept
     {
-        return buffer.init(block_size, capacity);
         file_path.clear();
 
         if (ifs.is_open())
             ifs.close();
+
+        return buffer.init(block_size, capacity);
     }
 
     status start_or_restart() noexcept
@@ -553,8 +553,12 @@ struct external_source
     data_array<text_file_source, text_file_source_id> text_file_sources;
     data_array<random_source, random_source_id> random_sources;
     std::mt19937_64 generator;
+    
+    // Chunk of memory used by a model.
     sz block_size = 512;
-    sz block_number = 1024 * 1024;
+
+    // Number of models can be attached to an external source.
+    sz block_number = 1024; 
 
     status init(const sz size) noexcept
     {

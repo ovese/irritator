@@ -288,12 +288,6 @@ show_random_distribution_input(random_source& src) noexcept
         return;
     }
 
-    ImGui::Columns(2, "Sources");
-    if (source_window_starting) {
-        ImGui::SetColumnWidth(0, 400.f);
-        source_window_starting = false;
-    }
-
     static bool show_file_dialog = false;
     static irt::constant_source* constant_ptr = nullptr;
     static irt::binary_file_source* binary_file_ptr = nullptr;
@@ -338,22 +332,22 @@ show_random_distribution_input(random_source& src) noexcept
             ImGui::TextUnformatted(
               external_source_str[ordinal(external_source_type::constant)]);
             ImGui::TableNextColumn();
-            ImGui::Text("%" PRIu64, cst_src->buffer.size);
+            ImGui::Text("%" PRIu64, cst_src->buffer.size());
             ImGui::TableNextColumn();
             if (cst_src->buffer.empty()) {
                 ImGui::TextUnformatted("-");
             } else {
-                size_t min = std::min(cst_src->buffer.size, size_t(3));
+                size_t min = std::min(cst_src->buffer.size(), size_t(3));
                 if (min == 1u)
-                    ImGui::Text("%f", cst_src->buffer.buffer[0]);
+                    ImGui::Text("%f", cst_src->buffer[0]);
                 else if (min == 2u)
                     ImGui::Text(
-                      "%f %f", cst_src->buffer.buffer[0], cst_src->buffer.buffer[1]);
+                      "%f %f", cst_src->buffer[0], cst_src->buffer[1]);
                 else
-                    ImGui::Text("%f %f %f",
-                                cst_src->buffer.buffer[0],
-                                cst_src->buffer.buffer[1],
-                                cst_src->buffer.buffer[2]);
+                    ImGui::Text("%f %f %f ...",
+                                cst_src->buffer[0],
+                                cst_src->buffer[1],
+                                cst_src->buffer[2]);
             }
         }
 
@@ -456,13 +450,14 @@ show_random_distribution_input(random_source& src) noexcept
         const float width =
           (ImGui::GetContentRegionAvail().x - 4.f * style.ItemSpacing.x)
           / 5.f;
-        ImVec2 button_sz(width, 30);
+        ImVec2 button_sz(width, 20);
 
         if (ImGui::Button("+constant", button_sz)) {
             if (srcs.constant_sources.can_alloc(1u)) {
                 auto& new_src = srcs.constant_sources.alloc();
-                if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
-                    // TODO log
+                if (is_bad(new_src.init(srcs.block_size))) {
+                    log_w.log(2,
+                              "Not enough memory to allocate constant source");
                     srcs.constant_sources.free(new_src);
                 }
             }
@@ -473,7 +468,8 @@ show_random_distribution_input(random_source& src) noexcept
             if (srcs.text_file_sources.can_alloc(1u)) {
                 auto& new_src = srcs.text_file_sources.alloc();
                 if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
-                    // TODO log
+                    log_w.log(2,
+                              "Not enough memory to allocate text file source");
                     srcs.text_file_sources.free(new_src);
                 }
             }
@@ -484,7 +480,8 @@ show_random_distribution_input(random_source& src) noexcept
             if (srcs.binary_file_sources.can_alloc(1u)) {
                 auto& new_src = srcs.binary_file_sources.alloc();
                 if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
-                    // TODO log
+                    log_w.log(2,
+                              "Not enough memory to allocate binary text source");
                     srcs.binary_file_sources.free(new_src);
                 }
             }
@@ -495,7 +492,8 @@ show_random_distribution_input(random_source& src) noexcept
             if (srcs.random_sources.can_alloc(1u)) {
                 auto& new_src = srcs.random_sources.alloc();
                 if (is_bad(new_src.init(srcs.block_size, srcs.block_number))) {
-                    // TODO log
+                    log_w.log(2,
+                              "Not enough memory to allocate random source");
                     srcs.random_sources.free(new_src);
                 }
             }
@@ -519,7 +517,9 @@ show_random_distribution_input(random_source& src) noexcept
         }
     }
 
-    ImGui::NextColumn();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Source editor",
                                 ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -528,7 +528,7 @@ show_random_distribution_input(random_source& src) noexcept
             auto index = get_index(id);
 
             static u32 new_size = 1;
-            new_size = (u32)constant_ptr->buffer.size;
+            new_size = static_cast<u32>(constant_ptr->buffer.size());
 
             ImGui::InputScalar("id",
                                ImGuiDataType_U32,
@@ -543,12 +543,14 @@ show_random_distribution_input(random_source& src) noexcept
                              constant_ptr->name.capacity());
 
             if (ImGui::InputScalar("length", ImGuiDataType_U32, &new_size) &&
-                new_size != constant_ptr->buffer.size) {
+                new_size != constant_ptr->buffer.size() &&
+                new_size < std::numeric_limits<u32>::max()) {
+                constant_ptr->buffer.resize(new_size);
             }
 
             for (u32 i = 0; i < new_size; ++i) {
                 ImGui::PushID(static_cast<int>(i));
-                ImGui::InputDouble("##name", &constant_ptr->buffer.buffer[i]);
+                ImGui::InputDouble("##name", &constant_ptr->buffer[i]);
                 ImGui::PopID();
             }
         }

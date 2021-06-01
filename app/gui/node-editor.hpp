@@ -569,10 +569,7 @@ struct application
     bool show_plot = true;
     bool show_settings = false;
     bool show_sources_window = false;
-
-    bool source_window_starting = true;
-
-
+    
     editor* alloc_editor();
     void free_editor(editor& ed);
 };

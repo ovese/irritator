@@ -629,7 +629,7 @@ private:
             return status::io_file_format_error;
 
         auto& cst = srcs.constant_sources.alloc();
-        if (auto ret = cst.init(srcs.block_size, srcs.block_number);
+        if (auto ret = cst.init(srcs.block_size);
             is_bad(ret)) {
             srcs.constant_sources.free(cst);
             return ret;
@@ -638,14 +638,13 @@ private:
         auto cst_id = srcs.constant_sources.get_id(cst);
 
         try {
-            cst.size = size;
             constant_mapping.emplace_back(id, ordinal(cst_id));
         } catch (const std::bad_alloc& /*e*/) {
             return status::io_not_enough_memory;
         }
 
         for (size_t i = 0; i < size; ++i) {
-            if (!(is >> cst.buffer.buffer[i]))
+            if (!(is >> cst.buffer[i]))
                 return status::io_file_format_error;
         }
 
@@ -1490,7 +1489,6 @@ private:
 struct writer
 {
     std::ostream& os;
-
     std::vector<model_id> map;
 
     writer(std::ostream& os_) noexcept
@@ -1506,10 +1504,10 @@ struct writer
             while (srcs.constant_sources.next(src)) {
                 const auto id = srcs.constant_sources.get_id(src);
                 const auto index = get_index(id);
-                os << index << ' ' << src->size << ' ';
+                os << index << ' ' << src->buffer.size();
 
-                for (sz i = 0; i < src->size; ++i)
-                    os << src->buffer.buffer[i];
+                for (const auto elem : src->buffer)
+                    os << ' ' << elem;
 
                 os << '\n';
             }

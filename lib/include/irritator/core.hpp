@@ -5123,21 +5123,32 @@ struct generator
     double default_offset = 0.0;
     source default_source_ta;
     source default_source_value;
+    bool stop_on_error = false;
 
     status initialize() noexcept
     {
         sigma = default_offset;
 
-        irt_return_if_bad(initialize_source(*sim, default_source_ta));
-        irt_return_if_bad(initialize_source(*sim, default_source_value));
+        if (stop_on_error) {
+            irt_return_if_bad(initialize_source(*sim, default_source_ta));
+            irt_return_if_bad(initialize_source(*sim, default_source_value));
+        } else {
+            (void)initialize_source(*sim, default_source_ta);
+            (void)initialize_source(*sim, default_source_value);
+        }
 
         return status::success;
     }
 
     status transition(time /*t*/, time /*e*/, time /*r*/) noexcept
     {
-        irt_return_if_bad(update_source(*sim, default_source_ta, sigma));
-        irt_return_if_bad(update_source(*sim, default_source_value, value));
+        if (stop_on_error) {
+            irt_return_if_bad(update_source(*sim, default_source_ta, sigma));
+            irt_return_if_bad(update_source(*sim, default_source_value, value));
+        } else {
+            (void)update_source(*sim, default_source_ta, sigma);
+            (void)update_source(*sim, default_source_value, value);
+        }
 
         return status::success;
     }
@@ -5753,13 +5764,18 @@ struct dynamic_queue
 
     simulation* sim = nullptr;
     source default_source_ta;
+    bool stop_on_error = false;
+
 
     status initialize() noexcept
     {
         sigma = time_domain<time>::infinity;
         queue.clear();
 
-        irt_return_if_bad(initialize_source(*sim, default_source_ta));
+        if (stop_on_error)
+            irt_return_if_bad(initialize_source(*sim, default_source_ta));
+        else
+            (void)initialize_source(*sim, default_source_ta);
 
         return status::success;
     }
@@ -5774,8 +5790,13 @@ struct dynamic_queue
                 irt_bad_return(status::model_dynamic_queue_full);
 
             double ta;
-            irt_return_if_bad(update_source(*sim, default_source_ta, ta));
-            queue.emplace_back(t + ta, msg[0], msg[1], msg[2], msg[3]);
+            if (stop_on_error) {
+                irt_return_if_bad(update_source(*sim, default_source_ta, ta));
+                queue.emplace_back(t + ta, msg[0], msg[1], msg[2], msg[3]);
+            } else {
+                if (is_success(update_source(*sim, default_source_ta, ta)))
+                    queue.emplace_back(t + ta, msg[0], msg[1], msg[2], msg[3]);
+            }
         }
 
         if (!queue.empty()) {
@@ -5814,6 +5835,7 @@ struct priority_queue
 
     simulation* sim = nullptr;
     source default_source_ta;
+    bool stop_on_error = false;
 
 private:
     status try_to_insert(const time t, const message& msg) noexcept
@@ -5845,7 +5867,10 @@ public:
         if (!queue.get_allocator())
             irt_bad_return(status::model_priority_queue_empty_allocator);
 
-        irt_return_if_bad(initialize_source(*sim, default_source_ta));
+        if (stop_on_error)
+            irt_return_if_bad(initialize_source(*sim, default_source_ta));
+        else
+            (void)initialize_source(*sim, default_source_ta);
 
         sigma = time_domain<time>::infinity;
         queue.clear();
@@ -5860,10 +5885,20 @@ public:
 
         for (const auto& msg : x[0].messages) {
             double value;
-            irt_return_if_bad(update_source(*sim, default_source_ta, value));
 
-            if (auto ret = try_to_insert(value + t, msg); is_bad(ret))
-                irt_bad_return(status::model_priority_queue_full);
+            if (stop_on_error) {
+                irt_return_if_bad(
+                  update_source(*sim, default_source_ta, value));
+
+                if (auto ret = try_to_insert(value + t, msg); is_bad(ret))
+                    irt_bad_return(status::model_priority_queue_full);
+            }
+            else {
+                if (is_success(update_source(*sim, default_source_ta, value))) {
+                    if (auto ret = try_to_insert(value + t, msg); is_bad(ret))
+                        irt_bad_return(status::model_priority_queue_full);
+                }
+            }
         }
 
         if (!queue.empty()) {
